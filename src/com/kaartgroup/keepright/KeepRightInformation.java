@@ -12,6 +12,9 @@ import java.util.TreeMap;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.gpx.GpxData;
+import org.openstreetmap.josm.gui.layer.GpxLayer;
+import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.gui.layer.markerlayer.MarkerLayer;
 import org.openstreetmap.josm.io.CachedFile;
 import org.openstreetmap.josm.io.GpxReader;
 import org.openstreetmap.josm.spi.preferences.Config;
@@ -163,6 +166,24 @@ public class KeepRightInformation {
 		}
 		cache.close();
 		return null;
+	}
+	
+	public Layer getErrors(List<Bounds> bounds, String type) {
+		MarkerLayer mlayer = null;
+		for (Bounds bound : bounds) {
+			GpxData gpxData = getErrors(bound);
+			if (gpxData != null) {
+				GpxLayer layer = new GpxLayer(gpxData);
+				MarkerLayer tlayer = new MarkerLayer(gpxData, KeepRight.KEEP_RIGHT_LAYER_NAME, layer.getAssociatedFile(), layer);
+				if (mlayer == null) {
+					mlayer = tlayer;
+				} else {
+					mlayer.mergeFrom(tlayer);
+				}
+			} else {
+			}
+		}
+		return mlayer;
 	}
 	
 	public String buildDownloadErrorList() {

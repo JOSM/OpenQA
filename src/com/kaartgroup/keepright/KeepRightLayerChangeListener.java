@@ -3,7 +3,9 @@
  */
 package com.kaartgroup.keepright;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.openstreetmap.josm.gui.MainApplication;
@@ -12,9 +14,9 @@ import org.openstreetmap.josm.gui.layer.LayerManager.LayerAddEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerChangeListener;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerOrderChangeEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
-import org.openstreetmap.josm.tools.Logging;
-
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.gui.layer.markerlayer.MarkerLayer;
+import org.openstreetmap.josm.tools.Logging;
 
 /**
  * @author Taylor Smock
@@ -36,7 +38,8 @@ public class KeepRightLayerChangeListener implements LayerChangeListener {
 			OsmDataLayer layer = (OsmDataLayer) e.getAddedLayer();
 			KeepRightDataSetListener listener = new KeepRightDataSetListener();
 			layer.data.addDataSetListener(listener);
-			Layer toAdd = listener.getKeepRightErrors(layer.getDataSet().getDataSourceBounds(), "gpx");
+			KeepRightInformation info = new KeepRightInformation();
+			Layer toAdd = info.getErrors(layer.getDataSet().getDataSourceBounds(), "gpx");
 			
 			int time = 0;
 			while (!MainApplication.getLayerManager().containsLayer(e.getAddedLayer()) && time < 10) {
@@ -61,6 +64,31 @@ public class KeepRightLayerChangeListener implements LayerChangeListener {
 			OsmDataLayer layer = (OsmDataLayer) e.getRemovedLayer();
 			layer.data.removeDataSetListener(listeners.get(layer));
 			listeners.remove(layer);
+		}
+	}
+	
+	public static void updateKeepRightLayer() {
+		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
+		if (osmDataLayers.size() > 0) {
+			ArrayList<Layer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayers());
+			for (Layer layer : layers) {
+				if (KeepRight.KEEP_RIGHT_LAYER_NAME.equals(layer.getName())) {
+					MainApplication.getLayerManager().removeLayer(layer);
+				}
+			}
+			KeepRightInformation info = new KeepRightInformation();
+			MarkerLayer toAdd = null;
+			for (OsmDataLayer layer : osmDataLayers) {
+				Layer tlayer = info.getErrors(layer.getDataSet().getDataSourceBounds(), "gpx");
+				if (tlayer instanceof MarkerLayer && toAdd != null) {
+					toAdd.mergeFrom(tlayer);
+				} else {
+					toAdd = (MarkerLayer) tlayer;
+				}
+			}
+			if (toAdd != null) {
+				MainApplication.getLayerManager().addLayer(toAdd, false);
+			}
 		}
 	}
 	
