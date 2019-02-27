@@ -12,6 +12,8 @@
 **
 -->
 <project name="keepright" default="dist" basedir=".">
+    <property name="ant.build.javac.source" value="1.8"/>
+    <property name="ant.build.javac.target" value="1.8"/>
 
     <!-- enter the SVN commit message -->
     <property name="commit.message" value="Commit message"/>
@@ -24,9 +26,9 @@
     <property name="plugin.author" value="Taylor Smock"/>
     <property name="plugin.class" value="com.kaartgroup.keepright.KeepRight"/>
     <property name="plugin.description" value="keepright validation checker (unofficial)"/>
-    <property name="plugin.icon" value="https://www.keepright.at/keepright.png"/>
+    <property name="plugin.icon" value="images/keepright.png"/>
     <property name="plugin.link" value="https://www.keepright.at"/>
-	<property name="plugin.canloadatruntime" value="true"/>
+    <property name="plugin.canloadatruntime" value="true"/>
     <!--<property name="plugin.early" value="..."/>-->
     <!--<property name="plugin.requires" value="..."/>-->
     <!--<property name="plugin.stage" value="..."/>-->
