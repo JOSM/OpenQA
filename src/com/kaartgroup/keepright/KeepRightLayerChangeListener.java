@@ -15,7 +15,6 @@ import org.openstreetmap.josm.gui.layer.LayerManager.LayerChangeListener;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerOrderChangeEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
-import org.openstreetmap.josm.gui.layer.markerlayer.MarkerLayer;
 import org.openstreetmap.josm.tools.Logging;
 
 /**
@@ -36,11 +35,7 @@ public class KeepRightLayerChangeListener implements LayerChangeListener {
 	public void layerAdded(LayerAddEvent e) {
 		if (e.getAddedLayer() instanceof OsmDataLayer) {
 			OsmDataLayer layer = (OsmDataLayer) e.getAddedLayer();
-			KeepRightDataSetListener listener = new KeepRightDataSetListener();
-			layer.data.addDataSetListener(listener);
-			KeepRightInformation info = new KeepRightInformation();
-			Layer toAdd = info.getErrors(layer.getDataSet().getDataSourceBounds(), "gpx");
-			
+			if (layer.getName().equals(KeepRight.KEEP_RIGHT_LAYER_NAME)) return;
 			int time = 0;
 			while (!MainApplication.getLayerManager().containsLayer(e.getAddedLayer()) && time < 10) {
 				try {
@@ -50,8 +45,12 @@ public class KeepRightLayerChangeListener implements LayerChangeListener {
 				}
 				time++;
 			}
-			MainApplication.getLayerManager().addLayer(toAdd);
+
+			KeepRightDataSetListener listener = new KeepRightDataSetListener();
+			layer.data.addDataSetListener(listener);
 			listeners.put(layer, listener);
+			
+			updateKeepRightLayer();
 		}
 	}
 
@@ -77,13 +76,13 @@ public class KeepRightLayerChangeListener implements LayerChangeListener {
 				}
 			}
 			KeepRightInformation info = new KeepRightInformation();
-			MarkerLayer toAdd = null;
+			Layer toAdd = null;
 			for (OsmDataLayer layer : osmDataLayers) {
-				Layer tlayer = info.getErrors(layer.getDataSet().getDataSourceBounds(), "gpx");
-				if (tlayer instanceof MarkerLayer && toAdd != null) {
+				Layer tlayer = info.getErrors(layer.getDataSet().getDataSourceBounds());
+				if (toAdd != null) {
 					toAdd.mergeFrom(tlayer);
 				} else {
-					toAdd = (MarkerLayer) tlayer;
+					toAdd = tlayer;
 				}
 			}
 			if (toAdd != null) {

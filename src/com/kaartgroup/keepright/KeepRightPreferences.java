@@ -20,7 +20,6 @@ import org.openstreetmap.josm.gui.preferences.TabPreferenceSetting;
 import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.GBC;
-import org.openstreetmap.josm.tools.Logging;
 
 /**
  * @author Taylor Smock
@@ -30,13 +29,14 @@ public class KeepRightPreferences extends DefaultTabPreferenceSetting implements
 	
 	JPanel testPanel;
 	
+	public static String PREF_FILETYPE = "keepright.filetype";
+	
 	public KeepRightPreferences() {
 		super("keepright.png", "Keep Right", "Keep Right Settings");
 	}
 
 	@Override
 	public void addGui(PreferenceTabbedPane gui) {
-		Logging.setLogLevel(Logging.LEVEL_DEBUG);
 		testPanel = new VerticallyScrollablePanel(new GridBagLayout());
 		KeepRightInformation info = new KeepRightInformation();
 		ArrayList<String> prefs = new ArrayList<>(Config.getPref().getList("keepright-tests", info.buildDefaultPref()));

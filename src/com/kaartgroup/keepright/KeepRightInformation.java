@@ -10,14 +10,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 
+import javax.swing.ImageIcon;
+
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.gpx.GpxData;
+import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.gui.layer.GpxLayer;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.markerlayer.MarkerLayer;
 import org.openstreetmap.josm.io.CachedFile;
 import org.openstreetmap.josm.io.GpxReader;
+import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.spi.preferences.Config;
+import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
+import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 import org.xml.sax.SAXException;
 
@@ -26,8 +32,9 @@ import org.xml.sax.SAXException;
  *
  */
 public class KeepRightInformation {
-	String baseApi = "https://www.keepright.at/export.php?";
-	String baseImg = "https://www.keepright.at/img/zap%d.png";
+	static String baseApi = "https://www.keepright.at/export.php?";
+	static String baseImg = "https://www.keepright.at/img/zap%d.png";
+	static String baseErrorUrl = "https://www.keepright.at/report_map.php?schema=%s&error=%s";
 	TreeMap<String, String> formats = new TreeMap<>();
 	TreeMap<Integer, String> errors;
 	
@@ -143,19 +150,37 @@ public class KeepRightInformation {
 		errors.put(413, tr("non-match"));
 	}
 	
-	public GpxData getErrors(Bounds bound) {
+	private CachedFile getFile(String type, Bounds bound) {
 		String enabled = buildDownloadErrorList();
-		String url = baseApi + "format=" + "gpx" + "&ch=" + enabled;
+		String url = baseApi + "format=" + type + "&ch=" + enabled;
 		url += "&left=" + Double.toString(bound.getMinLon());
 		url += "&bottom=" + Double.toString(bound.getMinLat());
 		url += "&right=" + Double.toString(bound.getMaxLon());
 		url += "&top=" + Double.toString(bound.getMaxLat());
 		CachedFile cache = new CachedFile(url);
 		cache.setMaxAge(86400);
-		cache.setHttpAccept(formats.get("gpx"));
+		cache.setHttpAccept(formats.get(type));
+		return cache;
+	}
+	
+	public static ImageIcon getIcon(int errorValue, ImageSizes size) {
+		try {
+			CachedFile image = new CachedFile(String.format(baseImg, errorValue));
+			image.setHttpAccept("image/*");
+			image.setMaxAge(30 * 86400);
+			image.getFile();
+			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath(), size);
+			image.close();
+			return icon;
+		} catch (IOException e) {
+			return ImageProvider.get("dialogs/notes", "note_open", size);
+		}
+	}
+	
+	public GpxData getGpxErrors(Bounds bound) {
+		CachedFile cache = getFile("gpx", bound);
 		try {
 			GpxReader reader = new GpxReader(cache.getInputStream());
-			Logging.debug("File at " + cache.getFile().getAbsolutePath());
 			reader.parse(true);
 			cache.close();
 			return reader.getGpxData();
@@ -168,19 +193,46 @@ public class KeepRightInformation {
 		return null;
 	}
 	
-	public Layer getErrors(List<Bounds> bounds, String type) {
-		MarkerLayer mlayer = null;
-		for (Bounds bound : bounds) {
-			GpxData gpxData = getErrors(bound);
-			if (gpxData != null) {
-				GpxLayer layer = new GpxLayer(gpxData);
-				MarkerLayer tlayer = new MarkerLayer(gpxData, KeepRight.KEEP_RIGHT_LAYER_NAME, layer.getAssociatedFile(), layer);
-				if (mlayer == null) {
-					mlayer = tlayer;
-				} else {
-					mlayer.mergeFrom(tlayer);
+	public Layer getGeoJsonErrors(Bounds bound) {
+		CachedFile cache = getFile("geojson", bound);
+		ErrorLayer layer = new ErrorLayer();
+		try {
+			DataSet ds = GeoJsonReader.parseDataSet(cache.getInputStream(), null);
+			layer.addNotes(ds);
+		} catch (IllegalDataException | IOException e) {
+			Logging.debug(e.getMessage());
+			e.printStackTrace();
+		}
+		return layer;
+	}
+	
+	public Layer getErrors(List<Bounds> bounds) {
+		String type = Config.getPref().get(KeepRightPreferences.PREF_FILETYPE);
+		Layer mlayer = null;
+		if (type.equals("geojson")) {
+			for (Bounds bound : bounds) {
+				Layer layer = getGeoJsonErrors(bound);
+				if (layer != null) {
+					if (mlayer == null) {
+						mlayer = layer;
+					} else {
+						mlayer.mergeFrom(layer);
+					}
 				}
-			} else {
+			}
+		} else {
+			// Default to GPX 
+			for (Bounds bound : bounds) {
+				GpxData gpxData = getGpxErrors(bound);
+				if (gpxData != null) {
+					GpxLayer layer = new GpxLayer(gpxData);
+					MarkerLayer tlayer = new MarkerLayer(gpxData, KeepRight.KEEP_RIGHT_LAYER_NAME, layer.getAssociatedFile(), layer);
+					if (mlayer == null) {
+						mlayer = tlayer;
+					} else {
+						mlayer.mergeFrom(tlayer);
+					}
+				}
 			}
 		}
 		return mlayer;
