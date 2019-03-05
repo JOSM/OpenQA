@@ -1,4 +1,4 @@
-package com.kaartgroup.keepright;
+package com.kaartgroup.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 import static org.openstreetmap.josm.tools.I18n.trn;
@@ -47,6 +47,9 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
+
+import com.kaartgroup.openqa.profiles.keepright.KeepRightInformation;
+
 import org.openstreetmap.josm.tools.Logging;
 
 public class ErrorLayer extends AbstractModifiableLayer implements MouseListener, DataSelectionListener {
@@ -69,13 +72,16 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	private Node displayedNode;
 	private HtmlPanel displayedPanel;
 	private JWindow displayedWindow;
+	
+	final String CACHE_DIR;
 
-	public ErrorLayer() {
-		this(KeepRight.KEEP_RIGHT_LAYER_NAME);
+	public ErrorLayer(String directory) {
+		this(KeepRightInformation.LAYER_NAME, directory);
 	}
-	public ErrorLayer(String name) {
+	public ErrorLayer(String name, String directory) {
 		super(name);
 		hookUpMapViewer();
+		CACHE_DIR = directory;
 	}
 	
 	public void hookUpMapViewer() {
@@ -110,7 +116,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		for (Node node : ds.getNodes()) {
 			Point p = mv.getPoint(node.getCoor());
 
-			ImageIcon icon = KeepRightInformation.getIcon(10 * (Integer.parseInt(node.get("error_type")) / 10), size);
+			ImageIcon icon = KeepRightInformation.getIcon(10 * (Integer.parseInt(node.get("error_type")) / 10), size, CACHE_DIR);
 			int width = icon.getIconWidth();
 			int height = icon.getIconHeight();
 			g.drawImage(icon.getImage(), p.x - (width / 2), p.y - (height / 2), MainApplication.getMap().mapView);
@@ -247,8 +253,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         actions.add(LayerListDialog.getInstance().createShowHideLayerAction());
         actions.add(LayerListDialog.getInstance().createDeleteLayerAction());
         actions.add(new LayerListPopup.InfoAction(this));
-        actions.add(new LayerSaveAction(this));
-        actions.add(new LayerSaveAsAction(this));
+        actions.add(new ForceClear(CACHE_DIR));
         return actions.toArray(new Action[0]);
 	}
     
@@ -289,6 +294,13 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			htmlText = htmlText.replace("&#xA;", "<br>");
 			sb.append(htmlText);
 		}
+		
+		sb.append("<hr/>");
+		sb.append("<a href=");
+		sb.append(String.format(KeepRightInformation.commentUrl, KeepRightInformation.FIXED, "", node.get("schema"), node.get("error_id")));
+		sb.append(">Fixed</a> <a href=");
+		sb.append(String.format(KeepRightInformation.commentUrl, KeepRightInformation.FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")));
+		sb.append(">False Positive</a>");
 		sb.append("</html>");
 		String result = sb.toString();
 		Logging.debug(result);

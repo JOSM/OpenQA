@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.kaartgroup.keepright;
+package com.kaartgroup.openqa;
 
 import org.openstreetmap.josm.data.osm.event.AbstractDatasetChangedEvent;
 import org.openstreetmap.josm.data.osm.event.DataChangedEvent;
@@ -17,14 +17,19 @@ import org.openstreetmap.josm.data.osm.event.WayNodesChangedEvent;
  * @author Taylor Smock
  *
  */
-public class KeepRightDataSetListener implements DataSetListener {
+public class OpenQADataSetListener implements DataSetListener {
 
+	private String CACHE_DIR;
+
+	public OpenQADataSetListener(String CACHE_DIR) {
+		this.CACHE_DIR = CACHE_DIR;
+	}
 	/* (non-Javadoc)
 	 * @see org.openstreetmap.josm.data.osm.event.DataSetListener#dataChanged(org.openstreetmap.josm.data.osm.event.DataChangedEvent)
 	 */
 	@Override
 	public void dataChanged(DataChangedEvent arg0) {
-		KeepRightLayerChangeListener.updateKeepRightLayer();
+		OpenQALayerChangeListener.updateKeepRightLayer(CACHE_DIR);
 	}
 	
 	@Override

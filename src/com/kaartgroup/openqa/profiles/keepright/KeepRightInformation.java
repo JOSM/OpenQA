@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.kaartgroup.keepright;
+package com.kaartgroup.openqa.profiles.keepright;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
@@ -22,47 +22,40 @@ import org.openstreetmap.josm.io.CachedFile;
 import org.openstreetmap.josm.io.GpxReader;
 import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.spi.preferences.Config;
-import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.xml.sax.SAXException;
+
+import com.kaartgroup.openqa.ErrorLayer;
+import com.kaartgroup.openqa.GeoJsonReader;
+import com.kaartgroup.openqa.profiles.GenericInformation;
 
 /**
  * @author Taylor Smock
  *
  */
-public class KeepRightInformation {
-	static String baseApi = "https://www.keepright.at/export.php?";
-	static String baseImg = "https://www.keepright.at/img/zap%d.png";
-	static String baseErrorUrl = "https://www.keepright.at/report_map.php?schema=%s&error=%s";
-	TreeMap<String, String> formats = new TreeMap<>();
-	TreeMap<Integer, String> errors;
+public class KeepRightInformation extends GenericInformation {
+	public static final String LAYER_NAME = "Keep Right Errors";
+	public static String baseApi = "https://www.keepright.at/export.php?";
+	public static String baseImg = "https://www.keepright.at/img/zap%d.png";
+	public static String baseErrorUrl = "https://www.keepright.at/report_map.php?schema=%s&error=%s";
 	
-	/** the difference between groups (integer numbers) */
-	public static final int GROUP_DIFFERENCE = 10;
-	
-	public KeepRightInformation() {
-		buildErrorList();
-		formats.put("geojson", "application/json");
-		formats.put("gpx", "application/gpx+xml");
-		formats.put("rss", "application/rss+xml");
+	public static String commentUrl = "https://www.keepright.at/comment.php?st=%s&co=%s&schema=%s&id=%s";
+	public static String FIXED = "ignore_t";
+	public static String FALSE_POSITIVE = "ignore";
+	public static enum COMMENT {
+		 
+		// Fixed
+		// https://www.keepright.at/comment.php?st=ignore_t&co=<+COMMENT+>&schema=<+SCHEMA+>&id=<+ERROR_ID+>
+		// Keep open
+		// https://www.keepright.at/comment.php?st=&co=<+COMMENT+>&schema=<+SCHEMA+>&id=<+ERROR_ID+>
+		// False positive
+		// https://www.keepright.at/comment.php?st=ignore&co=<+COMMENT+>&schema=<+SCHEMA+>&id=<+ERROR_ID+>
 	}
-	
-	public String getImage(String description) {
-		Object[] keys = errors.entrySet().stream().filter(e -> description.equals(e.getValue())).map(e -> e.getKey()).toArray();
-		if (keys.length == 1 && keys[0] instanceof Integer){
-			return getImage((Integer) keys[0]);
-		} else {
-			return null;
-		}
-	}
-	
-	public String getImage(int code) {
-		return String.format(baseImg,code);
-	}
-	
-	private void buildErrorList() {
-		errors = new TreeMap<>();
+	public static TreeMap<String, String> formats = new TreeMap<>();
+	public static TreeMap<Integer, String> errors = new TreeMap<>();
+	static {
 		errors.put(0, tr("default"));
 		errors.put(20, tr("multiple nodes on the same spot"));
 		errors.put(30, tr("non-closed areas"));
@@ -148,6 +141,31 @@ public class KeepRightInformation {
 		errors.put(411, tr("http error"));
 		errors.put(412, tr("domain hijacking"));
 		errors.put(413, tr("non-match"));
+		formats.put("geojson", "application/json");
+		formats.put("gpx", "application/gpx+xml");
+		formats.put("rss", "application/rss+xml");
+	}
+	
+	/** the difference between groups (integer numbers) */
+	public static final int GROUP_DIFFERENCE = 10;
+	
+	final String CACHE_DIR;
+	
+	public KeepRightInformation(String CACHE_DIR) {
+		this.CACHE_DIR = CACHE_DIR;
+	}
+	
+	public static String getImage(String description) {
+		Object[] keys = errors.entrySet().stream().filter(e -> description.equals(e.getValue())).map(e -> e.getKey()).toArray();
+		if (keys.length == 1 && keys[0] instanceof Integer){
+			return getImage((Integer) keys[0]);
+		} else {
+			return null;
+		}
+	}
+	
+	public static  String getImage(int code) {
+		return String.format(baseImg,code);
 	}
 	
 	private CachedFile getFile(String type, Bounds bound) {
@@ -157,27 +175,11 @@ public class KeepRightInformation {
 		url += "&bottom=" + Double.toString(bound.getMinLat());
 		url += "&right=" + Double.toString(bound.getMaxLon());
 		url += "&top=" + Double.toString(bound.getMaxLat());
-		CachedFile cache = new CachedFile(url);
-		cache.setMaxAge(86400);
-		cache.setHttpAccept(formats.get(type));
+		CachedFile cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
 		return cache;
 	}
 	
-	public static ImageIcon getIcon(int errorValue, ImageSizes size) {
-		try {
-			CachedFile image = new CachedFile(String.format(baseImg, errorValue));
-			image.setHttpAccept("image/*");
-			image.setMaxAge(30 * 86400);
-			image.getFile();
-			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath(), size);
-			image.close();
-			return icon;
-		} catch (IOException e) {
-			return ImageProvider.get("dialogs/notes", "note_open", size);
-		}
-	}
-	
-	public GpxData getGpxErrors(Bounds bound) {
+	private GpxData getGpxErrors(Bounds bound) {
 		CachedFile cache = getFile("gpx", bound);
 		try {
 			GpxReader reader = new GpxReader(cache.getInputStream());
@@ -193,9 +195,9 @@ public class KeepRightInformation {
 		return null;
 	}
 	
-	public Layer getGeoJsonErrors(Bounds bound) {
+	private Layer getGeoJsonErrors(Bounds bound) {
 		CachedFile cache = getFile("geojson", bound);
-		ErrorLayer layer = new ErrorLayer();
+		ErrorLayer layer = new ErrorLayer(CACHE_DIR);
 		try {
 			DataSet ds = GeoJsonReader.parseDataSet(cache.getInputStream(), null);
 			layer.addNotes(ds);
@@ -226,7 +228,7 @@ public class KeepRightInformation {
 				GpxData gpxData = getGpxErrors(bound);
 				if (gpxData != null) {
 					GpxLayer layer = new GpxLayer(gpxData);
-					MarkerLayer tlayer = new MarkerLayer(gpxData, KeepRight.KEEP_RIGHT_LAYER_NAME, layer.getAssociatedFile(), layer);
+					MarkerLayer tlayer = new MarkerLayer(gpxData, LAYER_NAME, layer.getAssociatedFile(), layer);
 					if (mlayer == null) {
 						mlayer = tlayer;
 					} else {
@@ -238,6 +240,18 @@ public class KeepRightInformation {
 		return mlayer;
 	}
 	
+	public static ImageIcon getIcon(int errorValue, ImageSizes size, String CACHE_DIR) {
+		try {
+			CachedFile image = GenericInformation.getFile(String.format(baseImg, errorValue), "image/*", CACHE_DIR);
+			image.setMaxAge(30 * 86400);
+			image.getFile();
+			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath(), size);
+			image.close();
+			return icon;
+		} catch (NullPointerException | IOException e) {
+			return GenericInformation.getIcon(-1, size, CACHE_DIR);
+		}
+	}
 	public String buildDownloadErrorList() {
 		String list = "";
 		List<String> enabled = Config.getPref().getList("keepright-tests", buildDefaultPref());

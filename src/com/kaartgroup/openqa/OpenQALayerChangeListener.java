@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.kaartgroup.keepright;
+package com.kaartgroup.openqa;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,15 +17,19 @@ import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.tools.Logging;
 
+import com.kaartgroup.openqa.profiles.keepright.KeepRightInformation;
+
 /**
  * @author Taylor Smock
  *
  */
-public class KeepRightLayerChangeListener implements LayerChangeListener {
-	HashMap<OsmDataLayer, KeepRightDataSetListener> listeners = new HashMap<>();
+public class OpenQALayerChangeListener implements LayerChangeListener {
+	HashMap<OsmDataLayer, OpenQADataSetListener> listeners = new HashMap<>();
+	private final String CACHE_DIR;
 	
-	public KeepRightLayerChangeListener() {
+	public OpenQALayerChangeListener(String CACHE_DIR) {
 		super();
+		this.CACHE_DIR = CACHE_DIR;
 	}
 
 	/**
@@ -35,7 +39,7 @@ public class KeepRightLayerChangeListener implements LayerChangeListener {
 	public void layerAdded(LayerAddEvent e) {
 		if (e.getAddedLayer() instanceof OsmDataLayer) {
 			OsmDataLayer layer = (OsmDataLayer) e.getAddedLayer();
-			if (layer.getName().equals(KeepRight.KEEP_RIGHT_LAYER_NAME)) return;
+			if (layer.getName().equals(KeepRightInformation.LAYER_NAME)) return;
 			int time = 0;
 			while (!MainApplication.getLayerManager().containsLayer(e.getAddedLayer()) && time < 10) {
 				try {
@@ -46,11 +50,11 @@ public class KeepRightLayerChangeListener implements LayerChangeListener {
 				time++;
 			}
 
-			KeepRightDataSetListener listener = new KeepRightDataSetListener();
+			OpenQADataSetListener listener = new OpenQADataSetListener(CACHE_DIR);
 			layer.data.addDataSetListener(listener);
 			listeners.put(layer, listener);
 			
-			updateKeepRightLayer();
+			updateKeepRightLayer(CACHE_DIR);
 		}
 	}
 
@@ -66,16 +70,17 @@ public class KeepRightLayerChangeListener implements LayerChangeListener {
 		}
 	}
 	
-	public static void updateKeepRightLayer() {
+	public static void updateKeepRightLayer(String CACHE_DIR) {
 		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
 		if (osmDataLayers.size() > 0) {
 			ArrayList<Layer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayers());
 			for (Layer layer : layers) {
-				if (KeepRight.KEEP_RIGHT_LAYER_NAME.equals(layer.getName())) {
+				if (layer instanceof ErrorLayer) {
 					MainApplication.getLayerManager().removeLayer(layer);
+					osmDataLayers.remove(layer);
 				}
 			}
-			KeepRightInformation info = new KeepRightInformation();
+			KeepRightInformation info = new KeepRightInformation(CACHE_DIR);
 			Layer toAdd = null;
 			for (OsmDataLayer layer : osmDataLayers) {
 				Layer tlayer = info.getErrors(layer.getDataSet().getDataSourceBounds());
