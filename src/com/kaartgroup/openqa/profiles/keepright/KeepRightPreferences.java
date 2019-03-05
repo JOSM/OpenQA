@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package com.kaartgroup.openqa.profiles.keepright;
 
@@ -28,12 +28,11 @@ import com.kaartgroup.openqa.OpenQALayerChangeListener;
  *
  */
 public class KeepRightPreferences extends DefaultTabPreferenceSetting implements SubPreferenceSetting {
-	
+
 	JPanel testPanel;
-	
-	public static String PREF_FILETYPE = "keepright.filetype";
+
 	final String CACHE_DIR;
-	
+
 	public KeepRightPreferences(String directory) {
 		super("keepright.png", "Keep Right", "Keep Right Settings");
 		CACHE_DIR = directory;
@@ -90,7 +89,7 @@ public class KeepRightPreferences extends DefaultTabPreferenceSetting implements
 			}
 		}
 		Config.getPref().putList("keepright-tests", prefs);
-		OpenQALayerChangeListener.updateKeepRightLayer(CACHE_DIR);
+		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
 		return false;
 	}
 

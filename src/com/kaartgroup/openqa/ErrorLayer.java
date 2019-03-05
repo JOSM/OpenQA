@@ -32,7 +32,6 @@ import org.openstreetmap.josm.data.osm.DataSelectionListener;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
-import org.openstreetmap.josm.data.osm.User;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
@@ -40,17 +39,13 @@ import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.AbstractModifiableLayer;
 import org.openstreetmap.josm.gui.layer.Layer;
-import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.widgets.HtmlPanel;
-import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
-import com.kaartgroup.openqa.profiles.keepright.KeepRightInformation;
-
-import org.openstreetmap.josm.tools.Logging;
+import com.kaartgroup.openqa.profiles.GenericInformation;
 
 public class ErrorLayer extends AbstractModifiableLayer implements MouseListener, DataSelectionListener {
     /**
@@ -72,22 +67,22 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	private Node displayedNode;
 	private HtmlPanel displayedPanel;
 	private JWindow displayedWindow;
-	
+
 	final String CACHE_DIR;
 
-	public ErrorLayer(String directory) {
-		this(KeepRightInformation.LAYER_NAME, directory);
-	}
-	public ErrorLayer(String name, String directory) {
-		super(name);
+	final GenericInformation type;
+
+	public ErrorLayer(GenericInformation type) {
+		super(type.getLayerName());
+		CACHE_DIR = type.getCacheDir();
+		this.type = type;
 		hookUpMapViewer();
-		CACHE_DIR = directory;
 	}
-	
+
 	public void hookUpMapViewer() {
 		MainApplication.getMap().mapView.addMouseListener(this);
 	}
-	
+
 	@Override
 	public synchronized void destroy() {
 		MainApplication.getMap().mapView.removeMouseListener(this);
@@ -106,7 +101,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	public boolean isModified() {
 		return ds.isModified();
 	}
-	
+
 	@Override
 	public void paint(Graphics2D g, MapView mv, Bounds bbox) {
 		final ImageSizes size = ImageProvider.ImageSizes.LARGEICON;
@@ -115,8 +110,8 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 		for (Node node : ds.getNodes()) {
 			Point p = mv.getPoint(node.getCoor());
-
-			ImageIcon icon = KeepRightInformation.getIcon(10 * (Integer.parseInt(node.get("error_type")) / 10), size, CACHE_DIR);
+			String error = type.getError(node);
+			ImageIcon icon = type.getIcon(error, size);
 			int width = icon.getIconWidth();
 			int height = icon.getIconHeight();
 			g.drawImage(icon.getImage(), p.x - (width / 2), p.y - (height / 2), MainApplication.getMap().mapView);
@@ -143,7 +138,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			displayedNode = null;
 			}
 	}
-	
+
 	private void paintSelectedNode(Graphics2D g, MapView mv, int iconHeight, int iconWidth, Node selectedNode) {
 		Point p = mv.getPoint(selectedNode.getBBox().getCenter());
 		g.setColor(ColorHelper.html2color(Config.getPref().get("color.selected")));
@@ -159,7 +154,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		int yt = p.y + (iconHeight / 2) + 2;
 		Point pTooltip;
 
-		String text = getNodeToolTip(selectedNode);
+		String text = type.getNodeToolTip(selectedNode);
 
 		if (displayedWindow == null) {
 			displayedPanel = new HtmlPanel(text);
@@ -222,7 +217,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 				screenloc.x + (d.width > rightMaxWidth && d.width <= leftMaxWidth ? xl - d.width : xr),
 				screenloc.y + (d.height > bottomMaxHeight && d.height <= topMaxHeight ? yt - d.height - 10 : yb));
 	}
-	
+
 	@Override
 	public void mouseClicked(MouseEvent e) {
         if (!SwingUtilities.isLeftMouseButton(e)) {
@@ -256,7 +251,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         actions.add(new ForceClear(CACHE_DIR));
         return actions.toArray(new Action[0]);
 	}
-    
+
 	/**
 	 * Inserts HTML line breaks ({@code <br>} at the end of each sentence mark
 	 * (period, interrogation mark, exclamation mark, ideographic full stop).
@@ -265,72 +260,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	 */
 	static String insertLineBreaks(String longText) {
 		return SENTENCE_MARKS_WESTERN.matcher(SENTENCE_MARKS_EASTERN.matcher(longText).replaceAll("$1<br>$2")).replaceAll("$1<br>$2");
-	}
-
-	/**
-	 * Returns the HTML-formatted tooltip text for the given note.
-	 * @param node note to display
-	 * @return the HTML-formatted tooltip text for the given note
-	 * @since 13111
-	 */
-	public static String getNodeToolTip(Node node) {
-		StringBuilder sb = new StringBuilder("<html>");
-		sb.append(tr("KeepRight"))
-		  .append(": ").append(node.get("title"))
-		  .append(" - <a href=")
-		  .append(String.format(KeepRightInformation.baseErrorUrl, node.get("schema"), node.get("error_id")))
-		  .append(">").append(node.get("error_id"))
-		  .append("</a>");
-
-		sb.append("<hr/>");
-		sb.append(node.get("description"));
-		sb.append("<hr/>");
-		sb.append(getUserName(Long.parseLong(node.get("object_id"))));
-		String commentText = node.get("comment");
-		if (commentText != null && !commentText.trim().isEmpty()) {
-			sb.append("<hr/>");
-			String htmlText = XmlWriter.encode(commentText, true);
-			// encode method leaves us with entity instead of \n
-			htmlText = htmlText.replace("&#xA;", "<br>");
-			sb.append(htmlText);
-		}
-		
-		sb.append("<hr/>");
-		sb.append("<a href=");
-		sb.append(String.format(KeepRightInformation.commentUrl, KeepRightInformation.FIXED, "", node.get("schema"), node.get("error_id")));
-		sb.append(">Fixed</a> <a href=");
-		sb.append(String.format(KeepRightInformation.commentUrl, KeepRightInformation.FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")));
-		sb.append(">False Positive</a>");
-		sb.append("</html>");
-		String result = sb.toString();
-		Logging.debug(result);
-		return result;
-	}
-
-	private static String getUserName(long obj_id) {
-		OsmPrimitive osm = new Node();
-		osm.setOsmId(obj_id, 1);
-		ArrayList<OsmDataLayer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class));
-		for (OsmDataLayer layer : layers) {
-			OsmPrimitive rosm = layer.data.getPrimitiveById(osm.getOsmPrimitiveId());
-			if (rosm != null) {
-				osm = rosm;
-				break;
-			}
-		}
-		User user = osm.getUser();
-		String userName;
-		if (user == null) {
-			userName = null;
-		} else {
-			userName = user.getName();
-		}
-		if (userName == null || userName.trim().isEmpty()) {
-			userName = "&lt;Anonymous&gt;";
-		} else {
-			userName = XmlWriter.encode(userName);
-		}
-		return userName;
 	}
 
 	@Override
@@ -349,12 +278,12 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			ds.mergeFrom(efrom.ds);
 		}
 	}
-	
+
 	@Override
 	public boolean isMergable(Layer other) {
 		return (other instanceof ErrorLayer);
 	}
-	
+
 	@Override
 	public void visitBoundingBox(BoundingXYVisitor v) {
 		for (OsmPrimitive osm : ds.allPrimitives()) {
@@ -362,7 +291,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		}
 
 	}
-	
+
 	@Override
 	public Object getInfoComponent() {
 		StringBuilder sb = new StringBuilder();
@@ -371,7 +300,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		.append(ds.allPrimitives().size());
 		return sb;
 	}
-	
+
 	@Override
 	public void selectionChanged(SelectionChangeEvent event) {
 		Set<OsmPrimitive> selected = event.getAdded();
@@ -382,12 +311,12 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	public void mousePressed(MouseEvent e) {
 		// Do nothing
 	}
-    
+
 	@Override
 	public void mouseReleased(MouseEvent e) {
 		// Do nothing
 	}
-	
+
 	@Override
 	public void mouseEntered(MouseEvent e) {
 		// Do nothing
@@ -397,5 +326,5 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	public void mouseExited(MouseEvent e) {
 		// Do nothing
 	}
-	
+
 }

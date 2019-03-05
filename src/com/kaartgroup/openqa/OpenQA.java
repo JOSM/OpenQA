@@ -18,6 +18,8 @@ import com.kaartgroup.openqa.profiles.keepright.KeepRightPreferences;
  */
 public class OpenQA extends Plugin {
 	public String CACHE_DIR;
+	public static String PREF_FILETYPE = "openqa.filetype";
+
 	public OpenQA(PluginInformation info) {
 		super(info);
 		try {
@@ -27,14 +29,15 @@ public class OpenQA extends Plugin {
 			Logging.debug(e.getMessage());
 		}
 		MainApplication.getLayerManager().addLayerChangeListener(new OpenQALayerChangeListener(CACHE_DIR));
-		if (Config.getPref().get(KeepRightPreferences.PREF_FILETYPE) == "") {
-			Config.getPref().put(KeepRightPreferences.PREF_FILETYPE, "geojson");
+		if (Config.getPref().get(PREF_FILETYPE) == "") {
+			Config.getPref().put(PREF_FILETYPE, "geojson");
 		}
-		OpenQALayerChangeListener.updateKeepRightLayer(CACHE_DIR);
+		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
 	}
 
 	@Override
 	public PreferenceSetting getPreferenceSetting() {
-		return new KeepRightPreferences(CACHE_DIR);
+		PreferenceSetting keepRight = new KeepRightPreferences(CACHE_DIR);
+		return keepRight;
 	}
 }

@@ -12,7 +12,7 @@ import org.openstreetmap.josm.tools.Utils;
 public class ForceClear extends AbstractAction {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = -4472400258489788312L;
 	final String CACHE_DIR;
@@ -28,7 +28,7 @@ public class ForceClear extends AbstractAction {
 		File directory = new File(CACHE_DIR);
 		Utils.deleteDirectory(directory);
 		directory.mkdirs();
-		OpenQALayerChangeListener.updateKeepRightLayer(CACHE_DIR);
+		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
 	}
 
 }

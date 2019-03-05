@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package com.kaartgroup.openqa;
 
@@ -29,14 +29,14 @@ public class OpenQADataSetListener implements DataSetListener {
 	 */
 	@Override
 	public void dataChanged(DataChangedEvent arg0) {
-		OpenQALayerChangeListener.updateKeepRightLayer(CACHE_DIR);
+		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
 	}
-	
+
 	@Override
 	public void otherDatasetChange(AbstractDatasetChangedEvent arg0) {
 		// Don't care
 	}
-	
+
 	@Override
 	public void nodeMoved(NodeMovedEvent arg0) {
 		// Don't care

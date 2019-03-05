@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package com.kaartgroup.openqa;
 
@@ -17,7 +17,9 @@ import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.tools.Logging;
 
+import com.kaartgroup.openqa.profiles.GenericInformation;
 import com.kaartgroup.openqa.profiles.keepright.KeepRightInformation;
+import com.kaartgroup.openqa.profiles.osmose.OsmoseInformation;
 
 /**
  * @author Taylor Smock
@@ -26,7 +28,7 @@ import com.kaartgroup.openqa.profiles.keepright.KeepRightInformation;
 public class OpenQALayerChangeListener implements LayerChangeListener {
 	HashMap<OsmDataLayer, OpenQADataSetListener> listeners = new HashMap<>();
 	private final String CACHE_DIR;
-	
+
 	public OpenQALayerChangeListener(String CACHE_DIR) {
 		super();
 		this.CACHE_DIR = CACHE_DIR;
@@ -53,8 +55,8 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 			OpenQADataSetListener listener = new OpenQADataSetListener(CACHE_DIR);
 			layer.data.addDataSetListener(listener);
 			listeners.put(layer, listener);
-			
-			updateKeepRightLayer(CACHE_DIR);
+
+			updateOpenQALayers(CACHE_DIR);
 		}
 	}
 
@@ -69,33 +71,37 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 			listeners.remove(layer);
 		}
 	}
-	
-	public static void updateKeepRightLayer(String CACHE_DIR) {
+
+	public static void updateOpenQALayers(String CACHE_DIR) {
 		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
 		if (osmDataLayers.size() > 0) {
 			ArrayList<Layer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayers());
 			for (Layer layer : layers) {
 				if (layer instanceof ErrorLayer) {
 					MainApplication.getLayerManager().removeLayer(layer);
-					osmDataLayers.remove(layer);
 				}
-			}
-			KeepRightInformation info = new KeepRightInformation(CACHE_DIR);
-			Layer toAdd = null;
-			for (OsmDataLayer layer : osmDataLayers) {
-				Layer tlayer = info.getErrors(layer.getDataSet().getDataSourceBounds());
-				if (toAdd != null) {
-					toAdd.mergeFrom(tlayer);
-				} else {
-					toAdd = tlayer;
-				}
-			}
-			if (toAdd != null) {
-				MainApplication.getLayerManager().addLayer(toAdd, false);
 			}
 		}
+		updateLayers(new KeepRightInformation(CACHE_DIR));
+		updateLayers(new OsmoseInformation(CACHE_DIR));
 	}
-	
+
+	private static void updateLayers(GenericInformation type) {
+		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
+		Layer toAdd = null;
+		for (OsmDataLayer layer : osmDataLayers) {
+			Layer tlayer = type.getErrors(layer.getDataSet().getDataSourceBounds());
+			if (toAdd != null) {
+				toAdd.mergeFrom(tlayer);
+			} else {
+				toAdd = tlayer;
+			}
+		}
+		if (toAdd != null) {
+			MainApplication.getLayerManager().addLayer(toAdd, false);
+		}
+	}
+
 	@Override
 	public void layerOrderChanged(LayerOrderChangeEvent e) {
 		// Don't care
