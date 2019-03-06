@@ -9,8 +9,6 @@ import org.openstreetmap.josm.plugins.PluginInformation;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
-import com.kaartgroup.openqa.profiles.keepright.KeepRightPreferences;
-
 /**
  *
  * @author Taylor Smock
@@ -37,7 +35,7 @@ public class OpenQA extends Plugin {
 
 	@Override
 	public PreferenceSetting getPreferenceSetting() {
-		PreferenceSetting keepRight = new KeepRightPreferences(CACHE_DIR);
-		return keepRight;
+		OpenQAPreferences openQA = new OpenQAPreferences(CACHE_DIR);
+		return openQA;
 	}
 }

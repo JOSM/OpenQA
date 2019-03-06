@@ -13,53 +13,33 @@ import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
-import org.openstreetmap.josm.gui.preferences.DefaultTabPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane;
-import org.openstreetmap.josm.gui.preferences.SubPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.TabPreferenceSetting;
 import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.GBC;
 
-import com.kaartgroup.openqa.OpenQALayerChangeListener;
+import com.kaartgroup.openqa.profiles.ProfilePreferences;
 
 /**
  * @author Taylor Smock
  *
  */
-public class KeepRightPreferences extends DefaultTabPreferenceSetting implements SubPreferenceSetting {
+public class KeepRightPreferences extends ProfilePreferences {
 
 	JPanel testPanel;
 
 	final String CACHE_DIR;
+	final static String PREF_TESTS = "openqa.keepright-tests";
 
 	public KeepRightPreferences(String directory) {
-		super("keepright.png", "Keep Right", "Keep Right Settings");
+		super("keepright.png", tr("Keep Right"), tr("Keep Right Settings"));
 		CACHE_DIR = directory;
 	}
 
 	@Override
 	public void addGui(PreferenceTabbedPane gui) {
-		testPanel = new VerticallyScrollablePanel(new GridBagLayout());
-		KeepRightInformation info = new KeepRightInformation(CACHE_DIR);
-		ArrayList<String> prefs = new ArrayList<>(Config.getPref().getList("keepright-tests", info.buildDefaultPref()));
-		for (int error : KeepRightInformation.errors.keySet()) {
-			if (error == 0) continue;
-			boolean checked = false;
-			if (prefs.contains(Integer.toString(error))) {
-				checked = true;
-			}
-			String errorMessage = "";
-			if (error % 10 == 0) {
-				errorMessage = KeepRightInformation.errors.get(error);
-			} else {
-				errorMessage = KeepRightInformation.errors.get((error / 10) * 10);
-				errorMessage += "/" + KeepRightInformation.errors.get(error);
-			}
-			JCheckBox toAdd = new JCheckBox(tr(errorMessage), checked);
-			testPanel.add(toAdd, GBC.eol());
-		}
-		gui.getValidatorPreference().addSubTab(this, tr("Keep Right"), new JScrollPane(testPanel));
+		gui.getValidatorPreference().addSubTab(this, tr("Keep Right"), createSubTab());
 	}
 
 	@Override
@@ -88,13 +68,36 @@ public class KeepRightPreferences extends DefaultTabPreferenceSetting implements
 				}
 			}
 		}
-		Config.getPref().putList("keepright-tests", prefs);
-		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
+		Config.getPref().putList(PREF_TESTS, prefs);
 		return false;
 	}
 
 	@Override
 	public TabPreferenceSetting getTabPreferenceSetting(PreferenceTabbedPane gui) {
 		return gui.getValidatorPreference();
+	}
+
+	@Override
+	public Component createSubTab() {
+		testPanel = new VerticallyScrollablePanel(new GridBagLayout());
+		KeepRightInformation info = new KeepRightInformation(CACHE_DIR);
+		ArrayList<String> prefs = new ArrayList<>(Config.getPref().getList(PREF_TESTS, info.buildDefaultPref()));
+		for (int error : KeepRightInformation.errors.keySet()) {
+			if (error == 0) continue;
+			boolean checked = false;
+			if (prefs.contains(Integer.toString(error))) {
+				checked = true;
+			}
+			String errorMessage = "";
+			if (error % 10 == 0) {
+				errorMessage = KeepRightInformation.errors.get(error);
+			} else {
+				errorMessage = KeepRightInformation.errors.get((error / 10) * 10);
+				errorMessage += "/" + KeepRightInformation.errors.get(error);
+			}
+			JCheckBox toAdd = new JCheckBox(tr(errorMessage), checked);
+			testPanel.add(toAdd, GBC.eol());
+		}
+		return new JScrollPane(testPanel);
 	}
 }

@@ -145,10 +145,17 @@ public class OsmoseInformation extends GenericInformation {
 	@Override
 	public ArrayList<String> buildDefaultPref() {
 		ArrayList<String> rArray = new ArrayList<>();
-		rArray.add("xxxx");
+		for (String error : getErrors(CACHE_DIR).keySet()) {
+			rArray.add(error);
+		}
 		return rArray;
 	}
 
+	/**
+	 * Get all the possible errors
+	 * @param CACHE_DIR Directory to store error list file
+	 * @return TreeMap&lt;String errorNumber, String errorName&gt;
+	 */
 	public static TreeMap<String, String> getErrors(String CACHE_DIR) {
 		TreeMap<String, String> tErrors = new TreeMap<>();
 		try {
@@ -181,6 +188,11 @@ public class OsmoseInformation extends GenericInformation {
 		return tErrors;
 	}
 
+	/**
+	 * Get the errors and their categories
+	 * @param CACHE_DIR directory to cache information in
+	 * @return TreeMap&lt;String category_number, TreeMap&lt;String category, TreeMap&lt;String errorNumber, String errorName&gt;&gt;&gt;
+	 */
 	public static TreeMap<String, TreeMap<String, TreeMap<String, String>>> getCategories(String CACHE_DIR) {
 		TreeMap<String, TreeMap<String, TreeMap<String, String>>> categories = new TreeMap<>();
 		TreeMap<String, String> errors = getErrors(CACHE_DIR);
@@ -227,7 +239,6 @@ public class OsmoseInformation extends GenericInformation {
 				JsonParser parser = Json.createParser(url.openStream());
 				while (parser.hasNext()) {
 					if (parser.next() == Event.START_OBJECT) {
-						node.setModified(true);
 						JsonObject info = parser.getObject();
 						for (String key : info.keySet()) {
 							Logging.debug("Looking at {0}", key);
