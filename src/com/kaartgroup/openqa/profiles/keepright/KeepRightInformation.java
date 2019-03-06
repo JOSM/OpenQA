@@ -7,8 +7,6 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.event.ActionEvent;
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -318,10 +316,10 @@ public class KeepRightInformation extends GenericInformation {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-					URL url = new URL(String.format(commentUrl, FIXED, "", node.get("schema"), node.get("error_id")));
-					URLConnection connection = url.openConnection();
-					connection.connect();
-					Logging.debug("Fixed at: {0}", url.toExternalForm());
+					CachedFile cache = new CachedFile(String.format(commentUrl, FIXED, "", node.get("schema"), node.get("error_id")));
+					cache.setDestDir(CACHE_DIR);
+					cache.getFile();
+					cache.close();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);
@@ -338,9 +336,10 @@ public class KeepRightInformation extends GenericInformation {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-					URL url = new URL(String.format(commentUrl, FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")));
-					URLConnection connection = url.openConnection();
-					connection.connect();
+					CachedFile cache = new CachedFile(String.format(commentUrl, FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")));
+					cache.setDestDir(CACHE_DIR);
+					cache.getFile();
+					cache.close();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);

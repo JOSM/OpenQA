@@ -8,7 +8,6 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -331,9 +330,10 @@ public class OsmoseInformation extends GenericInformation {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-					URL url = new URL(apiUrl + "done");
-					URLConnection connection = url.openConnection();
-					connection.connect();
+					CachedFile cache = new CachedFile(apiUrl + "done");
+					cache.setDestDir(CACHE_DIR);
+					cache.getFile();
+					cache.close();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);
@@ -350,9 +350,10 @@ public class OsmoseInformation extends GenericInformation {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-					URL url = new URL(apiUrl + "false");
-					URLConnection connection = url.openConnection();
-					connection.connect();
+					CachedFile cache = new CachedFile(apiUrl + "done");
+					cache.setDestDir(CACHE_DIR);
+					cache.getFile();
+					cache.close();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);
