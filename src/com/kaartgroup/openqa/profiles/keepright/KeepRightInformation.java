@@ -25,7 +25,6 @@ import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.gui.layer.GpxLayer;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.markerlayer.MarkerLayer;
-import org.openstreetmap.josm.io.CachedFile;
 import org.openstreetmap.josm.io.GpxReader;
 import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.io.XmlWriter;
@@ -35,6 +34,7 @@ import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.xml.sax.SAXException;
 
+import com.kaartgroup.openqa.CachedFile;
 import com.kaartgroup.openqa.ErrorLayer;
 import com.kaartgroup.openqa.GeoJsonReader;
 import com.kaartgroup.openqa.OpenQA;
@@ -321,6 +321,7 @@ public class KeepRightInformation extends GenericInformation {
 					URL url = new URL(String.format(commentUrl, FIXED, "", node.get("schema"), node.get("error_id")));
 					URLConnection connection = url.openConnection();
 					connection.connect();
+					Logging.debug("Fixed at: {0}", url.toExternalForm());
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);
@@ -369,5 +370,10 @@ public class KeepRightInformation extends GenericInformation {
 	@Override
 	public String getError(Node node) {
 		return node.get("error_type");
+	}
+
+	@Override
+	public String getCacheDir() {
+		return this.CACHE_DIR;
 	}
 }

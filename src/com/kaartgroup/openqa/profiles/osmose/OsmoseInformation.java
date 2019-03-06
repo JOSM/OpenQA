@@ -30,12 +30,12 @@ import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.gui.layer.Layer;
-import org.openstreetmap.josm.io.CachedFile;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
+import com.kaartgroup.openqa.CachedFile;
 import com.kaartgroup.openqa.ErrorLayer;
 import com.kaartgroup.openqa.profiles.GenericInformation;
 
@@ -246,9 +246,11 @@ public class OsmoseInformation extends GenericInformation {
 					if (parser.next() == Event.START_OBJECT) {
 						JsonObject info = parser.getObject();
 						for (String key : info.keySet()) {
-							if (key.equals("elems")) continue;
+							if ("elems".equals(key)) continue;// TODO actually deal with it in json format...
 							if (info.get(key).getValueType() == ValueType.STRING) {
 								node.put(key, info.getString(key));
+							} else {
+								node.put(key, info.get(key).toString());
 							}
 						}
 					}
@@ -295,6 +297,14 @@ public class OsmoseInformation extends GenericInformation {
 					htmlText += " and ";
 				}
 			}
+			sb.append(htmlText);
+			sb.append("<hr/>");
+		}
+
+		String suggestions = node.get("new_elems");
+		if (suggestions != null && !suggestions.trim().isEmpty() && !suggestions.equals("[]") ) {
+			String htmlText = "Possible additions: ";
+			htmlText += suggestions; // TODO check if we can parse this with JSON
 			sb.append(htmlText);
 			sb.append("<hr/>");
 		}
@@ -386,5 +396,10 @@ public class OsmoseInformation extends GenericInformation {
 	@Override
 	public String getError(Node node) {
 		return node.get("item");
+	}
+
+	@Override
+	public String getCacheDir() {
+		return this.CACHE_DIR;
 	}
 }

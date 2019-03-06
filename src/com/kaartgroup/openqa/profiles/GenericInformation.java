@@ -17,10 +17,11 @@ import org.openstreetmap.josm.data.osm.User;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
-import org.openstreetmap.josm.io.CachedFile;
 import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
+
+import com.kaartgroup.openqa.CachedFile;
 
 /**
  * @author Taylor Smock
@@ -98,9 +99,7 @@ public abstract class GenericInformation {
 	}
 
 
-	public String getCacheDir() {
-		return CACHE_DIR;
-	}
+	public abstract String getCacheDir();
 
 	public abstract String getLayerName();
 
