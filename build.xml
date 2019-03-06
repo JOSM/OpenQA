@@ -25,7 +25,7 @@
     -->
     <property name="plugin.author" value="Taylor Smock"/>
     <property name="plugin.class" value="com.kaartgroup.openqa.OpenQA"/>
-    <property name="plugin.description" value="OpenQA validation checker (currently only implements KeepRight)"/>
+    <property name="plugin.description" value="OpenQA validation checker (supports Osmose and Keepright))"/>
     <property name="plugin.icon" value="images/keepright.png"/>
     <property name="plugin.link" value="https://www.keepright.at"/>
     <property name="plugin.canloadatruntime" value="true"/>

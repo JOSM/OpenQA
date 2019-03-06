@@ -5,12 +5,18 @@ package com.kaartgroup.openqa.profiles.keepright;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import java.awt.event.ActionEvent;
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JPanel;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.gpx.GpxData;
@@ -144,7 +150,7 @@ public class KeepRightInformation extends GenericInformation {
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
 
-	final String CACHE_DIR;
+	public final String CACHE_DIR;
 
 	public KeepRightInformation(String CACHE_DIR) {
 		this.CACHE_DIR = CACHE_DIR;
@@ -203,6 +209,7 @@ public class KeepRightInformation extends GenericInformation {
 		return layer;
 	}
 
+	@Override
 	public Layer getErrors(List<Bounds> bounds) {
 		String type = Config.getPref().get(OpenQA.PREF_FILETYPE);
 		Layer mlayer = null;
@@ -235,6 +242,7 @@ public class KeepRightInformation extends GenericInformation {
 		return mlayer;
 	}
 
+	@Override
 	public ImageIcon getIcon(String errorValue, ImageSizes size) {
 		try {
 			int realErrorValue = (Integer.parseInt(errorValue) / 10) * 10;
@@ -248,6 +256,8 @@ public class KeepRightInformation extends GenericInformation {
 			return super.getIcon("-1", size);
 		}
 	}
+
+	@Override
 	public String buildDownloadErrorList() {
 		String list = "";
 		List<String> enabled = Config.getPref().getList("openqa.keepright-tests", buildDefaultPref());
@@ -259,6 +269,8 @@ public class KeepRightInformation extends GenericInformation {
 		}
 		return list;
 	}
+
+	@Override
 	public ArrayList<String> buildDefaultPref() {
 		ArrayList<String> pref = new ArrayList<>();
 		errors.forEach((key, value) -> pref.add(Integer.toString(key)));
@@ -288,16 +300,65 @@ public class KeepRightInformation extends GenericInformation {
 			sb.append(htmlText);
 		}
 
-		sb.append("<hr/>");
-		sb.append("<a href=");
-		sb.append(String.format(commentUrl, FIXED, "", node.get("schema"), node.get("error_id")));
-		sb.append(">Fixed</a> <a href=");
-		sb.append(String.format(commentUrl, FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")));
-		sb.append(">False Positive</a>");
 		sb.append("</html>");
 		String result = sb.toString();
 		Logging.debug(result);
 		return result;
+	}
+
+	@Override
+	public JPanel getActions(Node node) {
+		JPanel jPanel = new JPanel();
+		JButton fixed = new JButton();
+		JButton falsePositive = new JButton();
+
+		fixed.setAction(new AbstractAction() {
+			private static final long serialVersionUID = 8849423098553429237L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					URL url = new URL(String.format(commentUrl, FIXED, "", node.get("schema"), node.get("error_id")));
+					URLConnection connection = url.openConnection();
+					connection.connect();
+					node.put("actionTaken", "true");
+					fixed.setEnabled(false);
+					falsePositive.setEnabled(false);
+				} catch (IOException e1) {
+					Logging.debug(e1.getMessage());
+					e1.printStackTrace();
+				}
+			}
+		});
+
+		falsePositive.setAction(new AbstractAction() {
+			private static final long serialVersionUID = 1047757091731416301L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					URL url = new URL(String.format(commentUrl, FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")));
+					URLConnection connection = url.openConnection();
+					connection.connect();
+					node.put("actionTaken", "true");
+					fixed.setEnabled(false);
+					falsePositive.setEnabled(false);
+				} catch (IOException e1) {
+					Logging.debug(e1.getMessage());
+					e1.printStackTrace();
+				}
+			}
+		});
+
+		fixed.setText(tr("Fixed"));
+		falsePositive.setText(tr("False Positive"));
+		jPanel.add(fixed);
+		jPanel.add(falsePositive);
+		if (node.hasKey("actionTaken")) {
+			fixed.setEnabled(false);
+			falsePositive.setEnabled(false);
+		}
+		return jPanel;
 	}
 
 	@Override

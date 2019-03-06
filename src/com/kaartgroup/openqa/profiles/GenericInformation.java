@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.TreeMap;
 
 import javax.swing.ImageIcon;
+import javax.swing.JPanel;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.Node;
@@ -104,4 +105,6 @@ public abstract class GenericInformation {
 	public abstract String getLayerName();
 
 	public abstract String getError(Node node);
+
+	public abstract JPanel getActions(Node selectedNode);
 }

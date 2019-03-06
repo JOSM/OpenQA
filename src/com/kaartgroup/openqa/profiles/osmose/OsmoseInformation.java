@@ -5,8 +5,10 @@ package com.kaartgroup.openqa.profiles.osmose;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import java.awt.event.ActionEvent;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -18,7 +20,10 @@ import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
 import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JPanel;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -241,10 +246,8 @@ public class OsmoseInformation extends GenericInformation {
 					if (parser.next() == Event.START_OBJECT) {
 						JsonObject info = parser.getObject();
 						for (String key : info.keySet()) {
-							Logging.debug("Looking at {0}", key);
 							if (key.equals("elems")) continue;
 							if (info.get(key).getValueType() == ValueType.STRING) {
-								Logging.debug("{0} = {1}", key, info.getString(key));
 								node.put(key, info.getString(key));
 							}
 						}
@@ -260,12 +263,7 @@ public class OsmoseInformation extends GenericInformation {
 
 	@Override
 	public String getNodeToolTip(Node node) {
-		Logging.setLogLevel(Logging.LEVEL_DEBUG);
 		node = getAdditionalInformation(node);
-		Logging.debug("Current keys in tooltip");
-		for (String key : node.getKeys().keySet()) {
-			Logging.debug("OpenQA: {0}={1}", key, node.get(key));
-		}
 		StringBuilder sb = new StringBuilder("<html>");
 		sb.append(tr("Osmose"))
 		  .append(": ").append(node.get("title"))
@@ -304,17 +302,66 @@ public class OsmoseInformation extends GenericInformation {
 		sb.append("Last updated on " + node.get("update"));
 
 		sb.append("<br/> by " + getUserName(node.get("username")));
-		sb.append("<hr/>");
-		sb.append("<a href=");
-		String apiUrl = baseApi + "meta/error/" + node.get("error_id") + "/";
-		sb.append(apiUrl + "done");
-		sb.append(">Fixed</a> <a href=");
-		sb.append(apiUrl + "false");
-		sb.append(">False Positive</a>");
 		sb.append("</html>");
 		String result = sb.toString();
 		Logging.debug(result);
 		return result;
+	}
+
+	@Override
+	public JPanel getActions(Node node) {
+		final String apiUrl = baseApi + "error/" + node.get("error_id") + "/";
+
+		JPanel jPanel = new JPanel();
+		JButton fixed = new JButton();
+		JButton falsePositive = new JButton();
+		fixed.setAction(new AbstractAction() {
+			private static final long serialVersionUID = 3020815442282939509L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					URL url = new URL(apiUrl + "done");
+					URLConnection connection = url.openConnection();
+					connection.connect();
+					node.put("actionTaken", "true");
+					fixed.setEnabled(false);
+					falsePositive.setEnabled(false);
+				} catch (IOException e1) {
+					Logging.debug(e1.getMessage());
+					e1.printStackTrace();
+				}
+			}
+		});
+
+		falsePositive.setAction(new AbstractAction() {
+			private static final long serialVersionUID = -5379628459847724662L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					URL url = new URL(apiUrl + "false");
+					URLConnection connection = url.openConnection();
+					connection.connect();
+					node.put("actionTaken", "true");
+					fixed.setEnabled(false);
+					falsePositive.setEnabled(false);
+				} catch (IOException e1) {
+					Logging.debug(e1.getMessage());
+					e1.printStackTrace();
+				}
+			}
+		});
+
+		fixed.setText(tr("Fixed"));
+		falsePositive.setText(tr("False Positive"));
+		jPanel.add(fixed);
+		jPanel.add(falsePositive);
+		if (node.hasKey("actionTaken")) {
+			fixed.setEnabled(false);
+			falsePositive.setEnabled(false);
+		}
+		return jPanel;
 	}
 
 	public ImageIcon getIcon(String errorValue, ImageSizes size) {
@@ -322,7 +369,8 @@ public class OsmoseInformation extends GenericInformation {
 			CachedFile image = GenericInformation.getFile(String.format(baseImg, errorValue), "image/*", CACHE_DIR);
 			image.setMaxAge(30 * 86400);
 			image.getFile();
-			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath(), size);
+			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath());
+			icon = new ImageIcon(ImageProvider.createBoundedImage(icon.getImage(), size.getAdjustedHeight()));
 			image.close();
 			return icon;
 		} catch (NullPointerException | IOException e) {
