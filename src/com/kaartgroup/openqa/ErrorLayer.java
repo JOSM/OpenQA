@@ -122,7 +122,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		}
 
 		Collection<Node> selectedNodes = ds.getSelectedNodes();
-		if (!selectedNodes.isEmpty() && MainApplication.getMap().mapMode instanceof SelectAction) {
+		if (!selectedNodes.isEmpty() && MainApplication.getMap().mapMode != null && MainApplication.getMap().mapMode instanceof SelectAction) {
 			Node selectedNode = selectedNodes.iterator().next();
 			paintSelectedNode(g, mv, iconHeight, iconWidth, selectedNode);
 		} else {

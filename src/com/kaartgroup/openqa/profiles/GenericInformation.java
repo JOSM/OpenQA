@@ -40,7 +40,7 @@ public abstract class GenericInformation {
 
 	public static String getImage(String description) {
 		Object[] keys = errors.entrySet().stream().filter(e -> description.equals(e.getValue())).map(e -> e.getKey()).toArray();
-		if (keys.length == 1 && keys[0] instanceof Integer){
+		if (keys.length == 1 && keys[0] instanceof Integer) {
 			return getImage((Integer) keys[0]);
 		} else {
 			return null;
