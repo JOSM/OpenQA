@@ -9,6 +9,8 @@ import javax.swing.AbstractAction;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Utils;
 
+import com.kaartgroup.openqa.profiles.GenericInformation;
+
 public class ForceClear extends AbstractAction {
 
 	/**
@@ -25,7 +27,7 @@ public class ForceClear extends AbstractAction {
 	}
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		File directory = new File(CACHE_DIR);
+		File directory = new File(CACHE_DIR, GenericInformation.DATA_SUB_DIR);
 		Utils.deleteDirectory(directory);
 		directory.mkdirs();
 		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);

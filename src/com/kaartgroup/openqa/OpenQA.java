@@ -15,6 +15,7 @@ import org.openstreetmap.josm.tools.Logging;
  *
  */
 public class OpenQA extends Plugin {
+	public static final String NAME = "OpenQA";
 	public String CACHE_DIR;
 	public static String PREF_FILETYPE = "openqa.filetype";
 

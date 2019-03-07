@@ -3,19 +3,27 @@
  */
 package com.kaartgroup.openqa;
 
+import static org.openstreetmap.josm.tools.I18n.tr;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.gui.PleaseWaitRunnable;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerAddEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerChangeListener;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerOrderChangeEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.gui.progress.ProgressMonitor;
+import org.openstreetmap.josm.gui.progress.swing.PleaseWaitProgressMonitor;
+import org.openstreetmap.josm.io.OsmTransferException;
 import org.openstreetmap.josm.tools.Logging;
+import org.xml.sax.SAXException;
 
 import com.kaartgroup.openqa.profiles.GenericInformation;
 import com.kaartgroup.openqa.profiles.keepright.KeepRightInformation;
@@ -74,31 +82,59 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 
 	public static void updateOpenQALayers(String CACHE_DIR) {
 		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
-		if (osmDataLayers.size() > 0) {
-			ArrayList<Layer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayers());
-			for (Layer layer : layers) {
-				if (layer instanceof ErrorLayer) {
-					MainApplication.getLayerManager().removeLayer(layer);
-				}
+		if (osmDataLayers.size() == 0) return;
+		ArrayList<Layer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayers());
+		for (Layer layer : layers) {
+			if (layer instanceof ErrorLayer) {
+				MainApplication.getLayerManager().removeLayer(layer);
 			}
 		}
-		updateLayers(new KeepRightInformation(CACHE_DIR));
-		updateLayers(new OsmoseInformation(CACHE_DIR));
+		UpdateLayersTask osmose = new UpdateLayersTask(new OsmoseInformation(CACHE_DIR), new PleaseWaitProgressMonitor());
+		UpdateLayersTask keepright = new UpdateLayersTask(new KeepRightInformation(CACHE_DIR), new PleaseWaitProgressMonitor());
+
+		MainApplication.worker.submit(osmose);
+		MainApplication.worker.submit(keepright);
 	}
 
-	private static void updateLayers(GenericInformation type) {
-		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
-		Layer toAdd = null;
-		for (OsmDataLayer layer : osmDataLayers) {
-			Layer tlayer = type.getErrors(layer.getDataSet().getDataSourceBounds());
+	private static class UpdateLayersTask extends PleaseWaitRunnable {
+		private boolean isCanceled;
+		GenericInformation type;
+
+		public UpdateLayersTask(GenericInformation type, PleaseWaitProgressMonitor monitor) {
+			this(tr("Update {0} Layers", OpenQA.NAME), monitor, true);
+			this.type = type;
+		}
+		public UpdateLayersTask(String title, ProgressMonitor progressMonitor, boolean ignoreException) {
+			super(title, progressMonitor, ignoreException);
+		}
+
+		@Override
+		protected void cancel() {
+			isCanceled = true;
+		}
+
+		@Override
+		protected void realRun() throws SAXException, IOException, OsmTransferException {
+			List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
+			Layer toAdd = null;
+			for (OsmDataLayer layer : osmDataLayers) {
+				if (isCanceled) break;
+				getProgressMonitor().indeterminateSubTask(tr("Updating layers"));
+				Layer tlayer = type.getErrors(layer.getDataSet().getDataSourceBounds(), getProgressMonitor());
+				if (toAdd != null) {
+					toAdd.mergeFrom(tlayer);
+				} else {
+					toAdd = tlayer;
+				}
+			}
 			if (toAdd != null) {
-				toAdd.mergeFrom(tlayer);
-			} else {
-				toAdd = tlayer;
+				MainApplication.getLayerManager().addLayer(toAdd, false);
 			}
 		}
-		if (toAdd != null) {
-			MainApplication.getLayerManager().addLayer(toAdd, false);
+
+		@Override
+		protected void finish() {
+			// Do nothing
 		}
 	}
 

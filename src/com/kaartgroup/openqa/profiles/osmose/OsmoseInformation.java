@@ -6,6 +6,7 @@ package com.kaartgroup.openqa.profiles.osmose;
 import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.event.ActionEvent;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
@@ -48,6 +50,7 @@ public class OsmoseInformation extends GenericInformation {
 	public static String baseImg = "http://osmose.openstreetmap.fr/en/images/markers/marker-b-%s.png";
 	public static String baseErrorUrl = "http://osmose.openstreetmap.fr/en/error/";
 	private String CACHE_DIR;
+
 
 	public static TreeMap<String, String> formats = new TreeMap<>();
 
@@ -114,14 +117,32 @@ public class OsmoseInformation extends GenericInformation {
 		url += "," + Double.toString(bound.getMinLat());
 		url += "," + Double.toString(bound.getMaxLon());
 		url += "," + Double.toString(bound.getMaxLat());
-		CachedFile cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
+		CachedFile cache;
+		try {
+			cache = GenericInformation.getFile(url, formats.get(type), new File(CACHE_DIR, DATA_SUB_DIR).getCanonicalPath());
+		} catch (IOException e) {
+			Logging.debug(e.getMessage());
+			e.printStackTrace();
+			cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
+		}
 		return cache;
 	}
 
 	@Override
-	public Layer getErrors(List<Bounds> bounds) {
+	public Layer getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
+		monitor.subTask(tr("Getting {0} errors", "Osmose"));
 		Layer mlayer = null;
+		String windowTitle = tr("Updating {0} information", "Osmose");
+		if (bounds.size() > 10) {
+			monitor.subTask(windowTitle);
+			monitor.setTicksCount(bounds.size());
+			monitor.setTicks(0);
+		} else {
+			monitor.indeterminateSubTask(windowTitle);
+		}
 		for (Bounds bound : bounds) {
+			if (monitor.isCanceled()) break;
+			monitor.worked(1);
 			Layer layer = getGeoJsonErrors(bound);
 			if (layer != null) {
 				if (mlayer == null) {
@@ -335,6 +356,7 @@ public class OsmoseInformation extends GenericInformation {
 					cache.setDestDir(CACHE_DIR);
 					cache.getFile();
 					cache.close();
+					cache.clear();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);
@@ -355,6 +377,7 @@ public class OsmoseInformation extends GenericInformation {
 					cache.setDestDir(CACHE_DIR);
 					cache.getFile();
 					cache.close();
+					cache.clear();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);
@@ -379,7 +402,7 @@ public class OsmoseInformation extends GenericInformation {
 	@Override
 	public ImageIcon getIcon(String errorValue, ImageSizes size) {
 		try {
-			CachedFile image = GenericInformation.getFile(String.format(baseImg, errorValue), "image/*", CACHE_DIR);
+			CachedFile image = GenericInformation.getFile(String.format(baseImg, errorValue), "image/*", new File(CACHE_DIR, IMG_SUB_DIR).getCanonicalPath());
 			image.setMaxAge(30 * 86400);
 			image.getFile();
 			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath());

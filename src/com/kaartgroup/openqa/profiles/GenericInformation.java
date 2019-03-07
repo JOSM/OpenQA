@@ -17,6 +17,7 @@ import org.openstreetmap.josm.data.osm.User;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
@@ -33,6 +34,9 @@ public abstract class GenericInformation {
 	public static String baseErrorUrl;
 	public static TreeMap<Integer, String> errors;
 	protected String LAYER_NAME = "FIXME";
+
+	public static String DATA_SUB_DIR = "data";
+	public static String IMG_SUB_DIR = "img";
 
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
@@ -62,7 +66,7 @@ public abstract class GenericInformation {
 		return ImageProvider.get("dialogs/notes", "note_open", size);
 	}
 
-	public abstract Layer getErrors(List<Bounds> bounds);
+	public abstract Layer getErrors(List<Bounds> bounds, ProgressMonitor progressMonitor);
 	public abstract String buildDownloadErrorList();
 	public abstract ArrayList<String> buildDefaultPref();
 

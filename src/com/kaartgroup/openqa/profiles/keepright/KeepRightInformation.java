@@ -6,6 +6,7 @@ package com.kaartgroup.openqa.profiles.keepright;
 import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.event.ActionEvent;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,13 +24,14 @@ import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.gui.layer.GpxLayer;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.markerlayer.MarkerLayer;
+import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.GpxReader;
 import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
-import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
+import org.openstreetmap.josm.tools.Logging;
 import org.xml.sax.SAXException;
 
 import com.kaartgroup.openqa.CachedFile;
@@ -174,7 +176,14 @@ public class KeepRightInformation extends GenericInformation {
 		url += "&bottom=" + Double.toString(bound.getMinLat());
 		url += "&right=" + Double.toString(bound.getMaxLon());
 		url += "&top=" + Double.toString(bound.getMaxLat());
-		CachedFile cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
+		CachedFile cache;
+		try {
+			cache = GenericInformation.getFile(url, formats.get(type), new File(CACHE_DIR, DATA_SUB_DIR).getCanonicalPath());
+		} catch (IOException e) {
+			Logging.debug(e.getMessage());
+			e.printStackTrace();
+			cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
+		}
 		return cache;
 	}
 
@@ -208,11 +217,22 @@ public class KeepRightInformation extends GenericInformation {
 	}
 
 	@Override
-	public Layer getErrors(List<Bounds> bounds) {
+	public Layer getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
+		monitor.subTask(tr("Getting {0} errors", "KeepRight"));
 		String type = Config.getPref().get(OpenQA.PREF_FILETYPE);
 		Layer mlayer = null;
+		String windowTitle = tr("Updating {0} information", "KeepRight");
+		if (bounds.size() > 10) {
+			monitor.subTask(windowTitle);
+			monitor.setTicksCount(bounds.size());
+			monitor.setTicks(0);
+		} else {
+			monitor.indeterminateSubTask(windowTitle);
+		}
 		if (type.equals("geojson")) {
 			for (Bounds bound : bounds) {
+				if (monitor.isCanceled()) break;
+				monitor.worked(1);
 				Layer layer = getGeoJsonErrors(bound);
 				if (layer != null) {
 					if (mlayer == null) {
@@ -225,6 +245,8 @@ public class KeepRightInformation extends GenericInformation {
 		} else {
 			// Default to GPX
 			for (Bounds bound : bounds) {
+				if (monitor.isCanceled()) break;
+				monitor.worked(1);
 				GpxData gpxData = getGpxErrors(bound);
 				if (gpxData != null) {
 					GpxLayer layer = new GpxLayer(gpxData);
@@ -244,7 +266,7 @@ public class KeepRightInformation extends GenericInformation {
 	public ImageIcon getIcon(String errorValue, ImageSizes size) {
 		try {
 			int realErrorValue = (Integer.parseInt(errorValue) / 10) * 10;
-			CachedFile image = GenericInformation.getFile(String.format(baseImg, realErrorValue), "image/*", CACHE_DIR);
+			CachedFile image = GenericInformation.getFile(String.format(baseImg, realErrorValue), "image/*", new File(CACHE_DIR, IMG_SUB_DIR).getCanonicalPath());
 			image.setMaxAge(30 * 86400);
 			image.getFile();
 			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath(), size);
@@ -320,6 +342,7 @@ public class KeepRightInformation extends GenericInformation {
 					cache.setDestDir(CACHE_DIR);
 					cache.getFile();
 					cache.close();
+					cache.clear();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);
@@ -340,6 +363,7 @@ public class KeepRightInformation extends GenericInformation {
 					cache.setDestDir(CACHE_DIR);
 					cache.getFile();
 					cache.close();
+					cache.clear();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
 					falsePositive.setEnabled(false);
