@@ -258,8 +258,14 @@ public class OsmoseInformation extends GenericInformation {
 		return categories;
 	}
 
-	private static Node getAdditionalInformation(Node node) {
-		if (!node.hasKey("additionalInformation") || !node.get("additionalInformation").equals("true")) {
+	private static class AdditionalInformation implements Runnable {
+		Node node;
+		AdditionalInformation(Node node) {
+			this.node = node;
+		}
+
+		@Override
+		public void run() {
 			try {
 				URL url = new URL(baseApi + "error/" + node.get("error_id"));
 				JsonParser parser = Json.createParser(url.openStream());
@@ -280,13 +286,22 @@ public class OsmoseInformation extends GenericInformation {
 			} catch (IOException e) {
 				Logging.debug(e.getMessage());
 			}
+			synchronized (this) {
+				notifyAll();
+			}
 		}
-		return node;
+	}
+
+	private static void getAdditionalInformation(Node node) {
+		if (!node.hasKey("additionalInformation") || !node.get("additionalInformation").equals("true")) {
+			AdditionalInformation info = new AdditionalInformation(node);
+			info.run();
+		}
 	}
 
 	@Override
 	public String getNodeToolTip(Node node) {
-		node = getAdditionalInformation(node);
+		getAdditionalInformation(node);
 		StringBuilder sb = new StringBuilder("<html>");
 		sb.append(tr("Osmose"))
 		  .append(": ").append(node.get("title"))
