@@ -148,7 +148,7 @@ public class KeepRightInformation extends GenericInformation {
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
 
-	public final String CACHE_DIR;
+	private String CACHE_DIR;
 
 	public KeepRightInformation(String CACHE_DIR) {
 		this.CACHE_DIR = CACHE_DIR;

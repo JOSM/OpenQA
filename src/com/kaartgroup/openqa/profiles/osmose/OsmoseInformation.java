@@ -47,6 +47,7 @@ public class OsmoseInformation extends GenericInformation {
 	public static String baseApi = "http://osmose.openstreetmap.fr/api/0.2/";
 	public static String baseImg = "http://osmose.openstreetmap.fr/en/images/markers/marker-b-%s.png";
 	public static String baseErrorUrl = "http://osmose.openstreetmap.fr/en/error/";
+	private String CACHE_DIR;
 
 	public static TreeMap<String, String> formats = new TreeMap<>();
 
@@ -375,6 +376,7 @@ public class OsmoseInformation extends GenericInformation {
 		return jPanel;
 	}
 
+	@Override
 	public ImageIcon getIcon(String errorValue, ImageSizes size) {
 		try {
 			CachedFile image = GenericInformation.getFile(String.format(baseImg, errorValue), "image/*", CACHE_DIR);

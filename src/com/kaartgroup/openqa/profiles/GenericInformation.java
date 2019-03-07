@@ -33,7 +33,6 @@ public abstract class GenericInformation {
 	public static String baseErrorUrl;
 	public static TreeMap<Integer, String> errors;
 	protected String LAYER_NAME = "FIXME";
-	protected String CACHE_DIR = "";
 
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
