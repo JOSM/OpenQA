@@ -130,6 +130,22 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 			if (toAdd != null) {
 				MainApplication.getLayerManager().addLayer(toAdd, false);
 			}
+
+			List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
+			for (int i = 0; i < errorLayers.size(); i++) {
+				ErrorLayer layer = errorLayers.get(i);
+				if (layer == null || !MainApplication.getLayerManager().containsLayer(layer)) continue;
+				String name = layer.getName();
+				for (int j = i + 1; j < errorLayers.size(); j++) {
+					ErrorLayer jLayer = errorLayers.get(j);
+					if (jLayer == null || !MainApplication.getLayerManager().containsLayer(jLayer)) continue;
+					String nextName = jLayer.getName();
+					if (name.equals(nextName)) {
+						layer.mergeFrom(jLayer);
+						MainApplication.getLayerManager().removeLayer(jLayer);
+					}
+				}
+			}
 		}
 
 		@Override
