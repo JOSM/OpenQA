@@ -10,7 +10,6 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
@@ -34,6 +33,7 @@ import org.openstreetmap.josm.actions.mapmode.SelectAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.DataSelectionListener;
 import org.openstreetmap.josm.data.osm.DataSet;
+import org.openstreetmap.josm.data.osm.HighlightUpdateListener;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
@@ -48,11 +48,12 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
+import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
 import com.kaartgroup.openqa.profiles.GenericInformation;
 
-public class ErrorLayer extends AbstractModifiableLayer implements MouseListener,  MouseMotionListener, DataSelectionListener {
+public class ErrorLayer extends AbstractModifiableLayer implements MouseListener, DataSelectionListener, HighlightUpdateListener {
     /**
      * Pattern to detect end of sentences followed by another one, or a link, in western script.
      * Group 1 (capturing): period, interrogation mark, exclamation mark
@@ -93,13 +94,13 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
      */
     public void hookUpMapViewer() {
         MainApplication.getMap().mapView.addMouseListener(this);
-        MainApplication.getMap().mapView.addMouseMotionListener(this);
+        ds.addHighlightUpdateListener(this);
     }
 
     @Override
     public synchronized void destroy() {
         MainApplication.getMap().mapView.removeMouseListener(this);
-        MainApplication.getMap().mapView.removeMouseMotionListener(this);
+        ds.removeHighlightUpdateListener(this);
         ds.removeSelectionListener(this);
         hideNodeWindow();
         super.destroy();
@@ -404,22 +405,17 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         // Do nothing
     }
 
-    @Override
-    public void mouseDragged(MouseEvent e) {
-        // Do nothing
-    }
-
-    @Override
-    public void mouseMoved(MouseEvent e) {
-        long epoch = System.currentTimeMillis();
-
-        // Only update every 1/10 of a second (100 milliseconds)
-        if (epoch % 100 != 0) return;
-
-        Node closestNode = getClosestNode(e.getPoint(), 50);
-        if (closestNode != null) {
-            type.getNodeToolTip(closestNode);
-        }
-    }
+	@Override
+	public void highlightUpdated(HighlightUpdateEvent e) {
+		for (OsmPrimitive osmPrimitive : e.getDataSet().allPrimitives()) {
+			if (osmPrimitive instanceof Node && (osmPrimitive.hasKey("actionTaken") || "false".equals(osmPrimitive.get("actionTaken")))) {
+				Logging.info("Getting information for {0}", osmPrimitive.toString());
+				type.getNodeToolTip((Node) osmPrimitive);
+				if (!osmPrimitive.hasKey("actionTaken")) {
+					osmPrimitive.put("actionTaken", "true");
+				}
+			}
+		}
+	}
 
 }
