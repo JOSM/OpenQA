@@ -77,6 +77,10 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
     final GenericInformation type;
 
+    /**
+     * Create a new ErrorLayer using a class that extends {@code GenericInformation}
+     * @param type A class that extends {@code GenericInformation}
+     */
     public ErrorLayer(GenericInformation type) {
         super(type.getLayerName());
         CACHE_DIR = type.getCacheDir();
@@ -84,6 +88,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         hookUpMapViewer();
     }
 
+    /**
+     * Add this class to a map viewer. Usually called during initialization.
+     */
     public void hookUpMapViewer() {
         MainApplication.getMap().mapView.addMouseListener(this);
         MainApplication.getMap().mapView.addMouseMotionListener(this);
@@ -98,6 +105,11 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         super.destroy();
     }
 
+    /**
+     * Add notes from a {@code DataSet}
+     * @param newDataSet {@code DataSet} with notes
+     * @return true if added
+     */
     public boolean addNotes(DataSet newDataSet) {
         ds.mergeFrom(newDataSet);
         ds.addSelectionListener(this);
@@ -134,6 +146,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         }
     }
 
+    /**
+     * Hide the displayedWindow of the error notes
+     */
     private void hideNodeWindow() {
         if (displayedWindow != null) {
             displayedWindow.setVisible(false);
@@ -147,6 +162,14 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
             }
     }
 
+    /**
+     * Create the note window
+     * @param g The {@code Graphics2D} object that will be the note background
+     * @param mv The {@code MapView} object that we are drawing on
+     * @param iconHeight The height of the selection box that we are drawing
+     * @param iconWidth The width of the selection box we are drawing
+     * @param selectedNode The selected node to get information from
+     */
     private void paintSelectedNode(Graphics2D g, MapView mv, int iconHeight, int iconWidth, Node selectedNode) {
         Point p = mv.getPoint(selectedNode.getBBox().getCenter());
         g.setColor(ColorHelper.html2color(Config.getPref().get("color.selected")));
@@ -201,6 +224,16 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
     }
 
+    /**
+     * Get the location of the note panel
+     * @param mv {@code MapView} that is being drawn on
+     * @param text The text going into the note panel
+     * @param xl The left side of the icon
+     * @param xr The right side of the icon
+     * @param yt The top of the icon
+     * @param yb The bottom of the icon
+     * @return The point at which we are drawing the note panel
+     */
     private Point fixPanelSizeAndLocation(MapView mv, String text, int xl, int xr, int yt, int yb) {
         int leftMaxWidth = (int) (0.95 * xl);
         int rightMaxWidth = (int) (0.95 * mv.getWidth() - xr);
@@ -263,6 +296,12 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         }
     }
 
+    /**
+     * Get the closest node to a point
+     * @param mousePoint The current location of the mouse
+     * @param snapDistance The maximum distance to find the closest node
+     * @return The closest {@code Node}
+     */
     private Node getClosestNode(Point mousePoint, double snapDistance) {
         double minDistance = Double.MAX_VALUE;
         Node closestNode = null;
@@ -301,11 +340,13 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
     public Icon getIcon() {
         return ImageProvider.get("dialogs/notes", "note_open", ImageProvider.ImageSizes.SMALLICON);
     }
+
     @Override
     public String getToolTipText() {
         int size = ds.getNodes().size();
         return trn("{0} keepright note", "{0} keepright notes", size, size);
     }
+
     @Override
     public void mergeFrom(Layer from) {
         if (from instanceof ErrorLayer) {

@@ -260,6 +260,10 @@ public class OsmoseInformation extends GenericInformation {
 		return categories;
 	}
 
+	/**
+	 * Get additional information in a separate thread
+	 * @author Taylor Smock
+	 */
 	private static class AdditionalInformation implements Runnable {
 		Node node;
 		AdditionalInformation(Node node) {

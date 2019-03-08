@@ -80,6 +80,10 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 		}
 	}
 
+	/**
+	 * Update all the OpenQA layers
+	 * @param CACHE_DIR The directory to cache files in
+	 */
 	public static void updateOpenQALayers(String CACHE_DIR) {
 		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
 		if (osmDataLayers.size() == 0) return;

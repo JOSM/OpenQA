@@ -29,18 +29,30 @@ import com.kaartgroup.openqa.CachedFile;
  *
  */
 public abstract class GenericInformation {
+	/** The API URL, usually something like {@link https://www.example.org/api/0.2} */
 	public static String baseApi;
+	/** The base URL for images */
 	public static String baseImg;
+	/** The base URL for error data or error manipulation */
 	public static String baseErrorUrl;
+	/** The possible errors for the class {@code TreeMap<Integer errorValue, String description>} */
 	public static TreeMap<Integer, String> errors;
+	/** The layer name */
 	protected String LAYER_NAME = "FIXME";
 
+	/** The subdirectory to store the data. This can be deleted at any time. */
 	public static String DATA_SUB_DIR = "data";
+	/** The subdirectory to store the images. This is usually not deleted. */
 	public static String IMG_SUB_DIR = "img";
 
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
 
+	/**
+	 * Get an image for an error
+	 * @param description The error description (we find it in the @{code error} map)
+	 * @return The String URL for an image, null if not found
+	 */
 	public static String getImage(String description) {
 		Object[] keys = errors.entrySet().stream().filter(e -> description.equals(e.getValue())).map(e -> e.getKey()).toArray();
 		if (keys.length == 1 && keys[0] instanceof Integer) {
@@ -50,10 +62,22 @@ public abstract class GenericInformation {
 		}
 	}
 
+	/**
+	 * Get the image URL using {@code String.format(baseImg, code)}
+	 * @param code The error code
+	 * @return The image URL
+	 */
 	public static String getImage(int code) {
-		return String.format(baseImg,code);
+		return String.format(baseImg, code);
 	}
 
+	/**
+	 * Cache a file for 24 hours
+	 * @param url The URL to cache
+	 * @param type The accepted times for {@code CachedFile.setHttpAccept}
+	 * @param directory The directory to store the file in
+	 * @return The @{code CachedFile} object with which to get a file
+	 */
 	public static CachedFile getFile(String url, String type, String directory) {
 		CachedFile cache = new CachedFile(url);
 		cache.setMaxAge(86400);
@@ -62,15 +86,48 @@ public abstract class GenericInformation {
 		return cache;
 	}
 
+	/**
+	 * Get an icon for a string/size combination
+	 * @param string The string with which to get information -- defaults to "dialogs/notes"
+	 * @param size The size of the note
+	 * @return {@code ImageIcon} to associate with a {@code String string}
+	 */
 	public ImageIcon getIcon(String string, ImageSizes size) {
 		return ImageProvider.get("dialogs/notes", "note_open", size);
 	}
 
+	/**
+	 * Get the errors for a layer
+	 * @param bounds {@code List<Bounds> bounds} to iterate and get errors for
+	 * @param progressMonitor The {@code ProgressMonitor} with which to monitor progress
+	 * @return A new {@code Layer} that has error information for the {@code bounds}
+	 */
 	public abstract Layer getErrors(List<Bounds> bounds, ProgressMonitor progressMonitor);
+
+	/**
+	 * Build an error list to download
+	 * @return {@code String} of errors to pass to a download method
+	 */
 	public abstract String buildDownloadErrorList();
+
+	/**
+	 * Build an {@code ArrayList<String>} of default preferences
+	 * @return An {@code ArrayList<String>} of default preferences
+	 */
 	public abstract ArrayList<String> buildDefaultPref();
 
+	/**
+	 * Get the tooltip for a node
+	 * @param node {@code Node} to get information from
+	 * @return {@code String} with the information in HTML format
+	 */
 	public abstract String getNodeToolTip(Node node);
+
+	/**
+	 * Get a username from an {@code OsmPrimitiveId} as a {@code Long}
+	 * @param obj_id The id to find in the dataset
+	 * @return The username
+	 */
 	protected static String getUserName(long obj_id) {
 		OsmPrimitive osm = new Node();
 		osm.setOsmId(obj_id, 1);
@@ -92,6 +149,11 @@ public abstract class GenericInformation {
 		return getUserName(userName);
 	}
 
+	/**
+	 * Convert a userName to be compatible with XML 1.0
+	 * @param userName a username to ensure we can display
+	 * @return userName in XML 1.0 encoding
+	 */
 	protected static String getUserName(String userName) {
 		if (userName == null || userName.trim().isEmpty()) {
 			userName = "&lt;Anonymous&gt;";
@@ -101,12 +163,29 @@ public abstract class GenericInformation {
 		return userName;
 	}
 
-
+	/**
+	 * Get the cache directory
+	 * @return the directory in which we cache files
+	 */
 	public abstract String getCacheDir();
 
+	/**
+	 * Get the Layer name
+	 * @return The Layer name
+	 */
 	public abstract String getLayerName();
 
+	/**
+	 * Get the extra error information for a node
+	 * @param node {@code Node} with the information
+	 * @return a {@code String} with the error id
+	 */
 	public abstract String getError(Node node);
 
+	/**
+	 * Get the possible actions for a error node
+	 * @param selectedNode {@code Node} that has error information
+	 * @return A {@code JPanel} set of actions to add to a dialog
+	 */
 	public abstract JPanel getActions(Node selectedNode);
 }
