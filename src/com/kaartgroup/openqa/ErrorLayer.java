@@ -370,6 +370,11 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        long epoch = System.currentTimeMillis();
+
+        // Only update every 1/10 of a second (100 milliseconds)
+        if (epoch % 100 != 0) return;
+
         Node closestNode = getClosestNode(e.getPoint(), 50);
         if (closestNode != null) {
             type.getNodeToolTip(closestNode);

@@ -109,6 +109,7 @@ public class OsmoseInformation extends GenericInformation {
 		cache.close();
 		return layer;
 	}
+
 	private CachedFile getFile(Bounds bound) {
 		String type = "json";
 		String enabled = buildDownloadErrorList();
@@ -125,6 +126,7 @@ public class OsmoseInformation extends GenericInformation {
 			e.printStackTrace();
 			cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
 		}
+		cache.setDeleteOnExit(true);
 		return cache;
 	}
 

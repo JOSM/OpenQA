@@ -184,6 +184,7 @@ public class KeepRightInformation extends GenericInformation {
 			e.printStackTrace();
 			cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
 		}
+		cache.setDeleteOnExit(true);
 		return cache;
 	}
 

@@ -81,6 +81,8 @@ public class CachedFile implements Closeable {
     protected boolean initialized;
     protected String parameter;
 
+    protected boolean deleteOnExit;
+
     public static final long DEFAULT_MAXTIME = -1L;
     public static final long DAYS = TimeUnit.DAYS.toSeconds(1); // factor to get caching time in days
 
@@ -512,6 +514,9 @@ public class CachedFile implements Closeable {
                 Logging.warn(tr("Failed to rename file {0} to {1}.",
                 destDirFile.getPath(), localFile.getPath()));
             }
+            if (deleteOnExit) {
+                destDirFile.deleteOnExit();
+            }
         } catch (IOException e) {
             if (age >= maxAgeMillis && age < maxAgeMillis*2) {
                 Logging.warn(tr("Failed to load {0}, use cached file and retry next time: {1}", urlStr, e));
@@ -585,5 +590,20 @@ public class CachedFile implements Closeable {
         if (f != null && f.exists()) {
             Utils.deleteFile(f);
         }
+    }
+
+    /**
+     * Should the file be deleted on exit?
+     */
+    public void setDeleteOnExit(boolean delete) {
+        deleteOnExit = delete;
+    }
+
+    /**
+     * @return true if the file will be deleted on program exit {@code File.deleteOnExit()}
+     * The file will only be deleted if it is a remote file.
+     */
+    public boolean getDeleteOnExit() {
+        return deleteOnExit;
     }
 }
