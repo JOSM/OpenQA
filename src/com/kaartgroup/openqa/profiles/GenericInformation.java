@@ -23,6 +23,7 @@ import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
 import com.kaartgroup.openqa.CachedFile;
+import com.kaartgroup.openqa.ErrorLayer;
 
 /**
  * @author Taylor Smock
@@ -36,7 +37,7 @@ public abstract class GenericInformation {
 	/** The base URL for error data or error manipulation */
 	public static String baseErrorUrl;
 	/** The possible errors for the class {@code TreeMap<Integer errorValue, String description>} */
-	public static TreeMap<Integer, String> errors;
+	public static TreeMap<String, String> errors;
 	/** The layer name */
 	protected String LAYER_NAME = "FIXME";
 
@@ -47,29 +48,6 @@ public abstract class GenericInformation {
 
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
-
-	/**
-	 * Get an image for an error
-	 * @param description The error description (we find it in the @{code error} map)
-	 * @return The String URL for an image, null if not found
-	 */
-	public static String getImage(String description) {
-		Object[] keys = errors.entrySet().stream().filter(e -> description.equals(e.getValue())).map(e -> e.getKey()).toArray();
-		if (keys.length == 1 && keys[0] instanceof Integer) {
-			return getImage((Integer) keys[0]);
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * Get the image URL using {@code String.format(baseImg, code)}
-	 * @param code The error code
-	 * @return The image URL
-	 */
-	public static String getImage(int code) {
-		return String.format(baseImg, code);
-	}
 
 	/**
 	 * Cache a file for 24 hours
@@ -188,4 +166,15 @@ public abstract class GenericInformation {
 	 * @return A {@code JPanel} set of actions to add to a dialog
 	 */
 	public abstract JPanel getActions(Node selectedNode);
+
+	/**
+	 * Redraw error layers
+	 * @param name of the layer to redraw
+	 */
+	public static void redrawErrorLayers(String name) {
+		List<ErrorLayer> layers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
+		for (ErrorLayer layer : layers) {
+			layer.invalidate();
+		}
+	}
 }

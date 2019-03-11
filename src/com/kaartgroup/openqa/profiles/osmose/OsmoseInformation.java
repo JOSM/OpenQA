@@ -380,7 +380,9 @@ public class OsmoseInformation extends GenericInformation {
 					cache.clear();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
-					falsePositive.setEnabled(false);
+					falsePositive.setEnabled(true);
+					node.put("item", "fixed");
+					redrawErrorLayers(tr(LAYER_NAME));
 				} catch (IOException e1) {
 					Logging.debug(e1.getMessage());
 					e1.printStackTrace();
@@ -399,9 +401,11 @@ public class OsmoseInformation extends GenericInformation {
 					cache.getFile();
 					cache.close();
 					cache.clear();
-					node.put("actionTaken", "true");
-					fixed.setEnabled(false);
+					node.put("actionTaken", "false");
+					fixed.setEnabled(true);
 					falsePositive.setEnabled(false);
+					node.put("item", "falsePositive");
+					redrawErrorLayers(tr(LAYER_NAME));
 				} catch (IOException e1) {
 					Logging.debug(e1.getMessage());
 					e1.printStackTrace();
@@ -414,8 +418,13 @@ public class OsmoseInformation extends GenericInformation {
 		jPanel.add(fixed);
 		jPanel.add(falsePositive);
 		if (node.hasKey("actionTaken")) {
-			fixed.setEnabled(false);
-			falsePositive.setEnabled(false);
+			if ("true".equals(node.get("actionTaken"))) {
+				fixed.setEnabled(false);
+				falsePositive.setEnabled(true);
+			} else if ("false".equals(node.get("actionTaken"))) {
+				fixed.setEnabled(true);
+				falsePositive.setEnabled(false);
+			}
 		}
 		return jPanel;
 	}
@@ -423,12 +432,19 @@ public class OsmoseInformation extends GenericInformation {
 	@Override
 	public ImageIcon getIcon(String errorValue, ImageSizes size) {
 		try {
-			CachedFile image = GenericInformation.getFile(String.format(baseImg, errorValue), "image/*", new File(CACHE_DIR, IMG_SUB_DIR).getCanonicalPath());
-			image.setMaxAge(30 * 86400);
-			image.getFile();
-			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath());
-			icon = new ImageIcon(ImageProvider.createBoundedImage(icon.getImage(), size.getAdjustedHeight()));
-			image.close();
+			ImageIcon icon;
+			if ("fixed".equals(errorValue)) {
+				icon = ImageProvider.get("dialogs/notes", "note_closed", size);
+			} else if ("falsePositive".equals(errorValue)) {
+				icon = ImageProvider.get("dialogs/notes", "note_comment", size);
+			} else {
+				CachedFile image = GenericInformation.getFile(String.format(baseImg, errorValue), "image/*", new File(CACHE_DIR, IMG_SUB_DIR).getCanonicalPath());
+				image.setMaxAge(30 * 86400);
+				image.getFile();
+				icon = ImageProvider.get(image.getFile().getAbsolutePath());
+				icon = new ImageIcon(ImageProvider.createBoundedImage(icon.getImage(), size.getAdjustedHeight()));
+				image.close();
+			}
 			return icon;
 		} catch (NullPointerException | IOException e) {
 			return super.getIcon("-1", size);

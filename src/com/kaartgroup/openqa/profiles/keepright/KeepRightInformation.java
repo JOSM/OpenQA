@@ -47,7 +47,7 @@ import com.kaartgroup.openqa.profiles.GenericInformation;
 public class KeepRightInformation extends GenericInformation {
 	public static final String LAYER_NAME = "Keep Right Errors";
 	public static String baseApi = "https://www.keepright.at/export.php?";
-	public static String baseImg = "https://www.keepright.at/img/zap%d.png";
+	public static String baseImg = "https://www.keepright.at/img/%s.png";
 	public static String baseErrorUrl = "https://www.keepright.at/report_map.php?schema=%s&error=%s";
 
 	public static String commentUrl = "https://www.keepright.at/comment.php?st=%s&co=%s&schema=%s&id=%s";
@@ -55,93 +55,93 @@ public class KeepRightInformation extends GenericInformation {
 	public static String FALSE_POSITIVE = "ignore";
 
 	public static TreeMap<String, String> formats = new TreeMap<>();
-	public static TreeMap<Integer, String> errors = new TreeMap<>();
+	public static TreeMap<String, String> errors = new TreeMap<>();
 	static {
-		errors.put(0, tr("default"));
-		errors.put(20, tr("multiple nodes on the same spot"));
-		errors.put(30, tr("non-closed areas"));
-		errors.put(40, tr("dead-ended one-ways"));
-		errors.put(50, tr("almost-junctions"));
-		errors.put(60, tr("deprecated tags"));
-		errors.put(70, tr("missing tags"));
-		errors.put(90, tr("motorways without ref"));
-		errors.put(100, tr("places of worship without religion"));
-		errors.put(110, tr("point of interest without name"));
-		errors.put(120, tr("ways without nodes"));
-		errors.put(130, tr("floating islands"));
-		errors.put(150, tr("railway crossings without tag"));
-		errors.put(160, tr("wrongly used railway crossing tag"));
-		errors.put(170, tr("fixme-tagged items"));
-		errors.put(180, tr("relations without type"));
+		errors.put("0", tr("default"));
+		errors.put("20", tr("multiple nodes on the same spot"));
+		errors.put("30", tr("non-closed areas"));
+		errors.put("40", tr("dead-ended one-ways"));
+		errors.put("50", tr("almost-junctions"));
+		errors.put("60", tr("deprecated tags"));
+		errors.put("70", tr("missing tags"));
+		errors.put("90", tr("motorways without ref"));
+		errors.put("100", tr("places of worship without religion"));
+		errors.put("110", tr("point of interest without name"));
+		errors.put("120", tr("ways without nodes"));
+		errors.put("130", tr("floating islands"));
+		errors.put("150", tr("railway crossings without tag"));
+		errors.put("160", tr("wrongly used railway crossing tag"));
+		errors.put("170", tr("fixme-tagged items"));
+		errors.put("180", tr("relations without type"));
 
-		errors.put(190, tr("intersections without junctions"));
-		errors.put(191, tr("highway-highway"));
-		errors.put(192, tr("highway-waterway"));
-		errors.put(193, tr("highway-riverbank"));
-		errors.put(194, tr("waterway-waterway"));
-		errors.put(195, tr("cycleway-cycleway"));
-		errors.put(196, tr("highway-cycleway"));
-		errors.put(197, tr("cycleway-waterway"));
-		errors.put(198, tr("cycleway-riverbank"));
+		errors.put("190", tr("intersections without junctions"));
+		errors.put("191", tr("highway-highway"));
+		errors.put("192", tr("highway-waterway"));
+		errors.put("193", tr("highway-riverbank"));
+		errors.put("194", tr("waterway-waterway"));
+		errors.put("195", tr("cycleway-cycleway"));
+		errors.put("196", tr("highway-cycleway"));
+		errors.put("197", tr("cycleway-waterway"));
+		errors.put("198", tr("cycleway-riverbank"));
 
-		errors.put(200, tr("overlapping ways"));
-		errors.put(201, tr("highway-highway"));
-		errors.put(202, tr("highway-waterway"));
-		errors.put(203, tr("highway-riverbank"));
-		errors.put(204, tr("waterway-waterway"));
-		errors.put(205, tr("cycleway-cycleway"));
-		errors.put(206, tr("highway-cycleway"));
-		errors.put(207, tr("cycleway-waterway"));
-		errors.put(208, tr("cycleway-riverbank"));
+		errors.put("200", tr("overlapping ways"));
+		errors.put("201", tr("highway-highway"));
+		errors.put("202", tr("highway-waterway"));
+		errors.put("203", tr("highway-riverbank"));
+		errors.put("204", tr("waterway-waterway"));
+		errors.put("205", tr("cycleway-cycleway"));
+		errors.put("206", tr("highway-cycleway"));
+		errors.put("207", tr("cycleway-waterway"));
+		errors.put("208", tr("cycleway-riverbank"));
 
-		errors.put(210, tr("loopings"));
-		errors.put(220, tr("misspelled tags"));
+		errors.put("210", tr("loopings"));
+		errors.put("220", tr("misspelled tags"));
 
-		errors.put(230, tr("layer conflicts"));
-		errors.put(231, tr("mixed layers intersections"));
-		errors.put(232, tr("strange layers"));
+		errors.put("230", tr("layer conflicts"));
+		errors.put("231", tr("mixed layers intersections"));
+		errors.put("232", tr("strange layers"));
 
-		errors.put(270, tr("motorways connected directly"));
+		errors.put("270", tr("motorways connected directly"));
 
-		errors.put(280, tr("boundaries"));
-		errors.put(281, tr("missing name"));
-		errors.put(282, tr("missing admin_level"));
-		errors.put(283, tr("not closed loop"));
-		errors.put(284, tr("splitting boundary"));
-		errors.put(285, tr("admin_level too high"));
+		errors.put("280", tr("boundaries"));
+		errors.put("281", tr("missing name"));
+		errors.put("282", tr("missing admin_level"));
+		errors.put("283", tr("not closed loop"));
+		errors.put("284", tr("splitting boundary"));
+		errors.put("285", tr("admin_level too high"));
 
-		errors.put(290, tr("restrictions"));
-		errors.put(291, tr("missing type"));
-		errors.put(292, tr("missing from way"));
-		errors.put(293, tr("missing to way"));
-		errors.put(294, tr("from or to not a way"));
-		errors.put(295, tr("via is not on the way ends"));
-		errors.put(296, tr("wrong restriction angle"));
-		errors.put(297, tr("wrong direction of to member"));
-		errors.put(298, tr("already restricted by oneway"));
+		errors.put("290", tr("restrictions"));
+		errors.put("291", tr("missing type"));
+		errors.put("292", tr("missing from way"));
+		errors.put("293", tr("missing to way"));
+		errors.put("294", tr("from or to not a way"));
+		errors.put("295", tr("via is not on the way ends"));
+		errors.put("296", tr("wrong restriction angle"));
+		errors.put("297", tr("wrong direction of to member"));
+		errors.put("298", tr("already restricted by oneway"));
 
-		errors.put(300, tr("missing maxspeed"));
+		errors.put("300", tr("missing maxspeed"));
 
-		errors.put(310, tr("roundabouts"));
-		errors.put(311, tr("not closed loop"));
-		errors.put(312, tr("wrong direction"));
-		errors.put(313, tr("faintly connected"));
+		errors.put("310", tr("roundabouts"));
+		errors.put("311", tr("not closed loop"));
+		errors.put("312", tr("wrong direction"));
+		errors.put("313", tr("faintly connected"));
 
-		errors.put(320, tr("*_link-connections"));
-		errors.put(350, tr("bridge-tags"));
-		errors.put(360, tr("language unknown"));
-		errors.put(370, tr("doubled places"));
-		errors.put(380, tr("non-physical use of sport-tag"));
-		errors.put(390, tr("missing tracktype"));
+		errors.put("320", tr("*_link-connections"));
+		errors.put("350", tr("bridge-tags"));
+		errors.put("360", tr("language unknown"));
+		errors.put("370", tr("doubled places"));
+		errors.put("380", tr("non-physical use of sport-tag"));
+		errors.put("390", tr("missing tracktype"));
 
-		errors.put(400, tr("geometry glitches"));
-		errors.put(401, tr("missing turn restriction"));
-		errors.put(402, tr("impossible angles"));
+		errors.put("400", tr("geometry glitches"));
+		errors.put("401", tr("missing turn restriction"));
+		errors.put("402", tr("impossible angles"));
 
-		errors.put(410, tr("website"));
-		errors.put(411, tr("http error"));
-		errors.put(412, tr("domain hijacking"));
-		errors.put(413, tr("non-match"));
+		errors.put("410", tr("website"));
+		errors.put("411", tr("http error"));
+		errors.put("412", tr("domain hijacking"));
+		errors.put("413", tr("non-match"));
 		formats.put("geojson", "application/json");
 		formats.put("gpx", "application/gpx+xml");
 		formats.put("rss", "application/rss+xml");
@@ -154,19 +154,6 @@ public class KeepRightInformation extends GenericInformation {
 
 	public KeepRightInformation(String CACHE_DIR) {
 		this.CACHE_DIR = CACHE_DIR;
-	}
-
-	public static String getImage(String description) {
-		Object[] keys = errors.entrySet().stream().filter(e -> description.equals(e.getValue())).map(e -> e.getKey()).toArray();
-		if (keys.length == 1 && keys[0] instanceof Integer) {
-			return getImage((Integer) keys[0]);
-		} else {
-			return null;
-		}
-	}
-
-	public static  String getImage(int code) {
-		return String.format(baseImg,code);
 	}
 
 	private CachedFile getFile(String type, Bounds bound) {
@@ -266,7 +253,13 @@ public class KeepRightInformation extends GenericInformation {
 	@Override
 	public ImageIcon getIcon(String errorValue, ImageSizes size) {
 		try {
-			int realErrorValue = (Integer.parseInt(errorValue) / 10) * 10;
+			String realErrorValue = "";
+			try {
+				realErrorValue = "zap" + Integer.toString((Integer.parseInt(errorValue) / 10) * 10);
+			} catch (NumberFormatException e) {
+				realErrorValue = errorValue;
+				Logging.debug(e.getMessage());
+			}
 			CachedFile image = GenericInformation.getFile(String.format(baseImg, realErrorValue), "image/*", new File(CACHE_DIR, IMG_SUB_DIR).getCanonicalPath());
 			image.setMaxAge(30 * 86400);
 			image.getFile();
@@ -294,7 +287,7 @@ public class KeepRightInformation extends GenericInformation {
 	@Override
 	public ArrayList<String> buildDefaultPref() {
 		ArrayList<String> pref = new ArrayList<>();
-		errors.forEach((key, value) -> pref.add(Integer.toString(key)));
+		errors.forEach((key, value) -> pref.add(key));
 		return pref;
 	}
 
@@ -346,7 +339,9 @@ public class KeepRightInformation extends GenericInformation {
 					cache.clear();
 					node.put("actionTaken", "true");
 					fixed.setEnabled(false);
-					falsePositive.setEnabled(false);
+					falsePositive.setEnabled(true);
+					node.put("error_type", "zapangel");
+					redrawErrorLayers(tr(LAYER_NAME));
 				} catch (IOException e1) {
 					Logging.debug(e1.getMessage());
 					e1.printStackTrace();
@@ -365,9 +360,11 @@ public class KeepRightInformation extends GenericInformation {
 					cache.getFile();
 					cache.close();
 					cache.clear();
-					node.put("actionTaken", "true");
-					fixed.setEnabled(false);
+					node.put("actionTaken", "false");
+					fixed.setEnabled(true);
 					falsePositive.setEnabled(false);
+					node.put("error_type", "zapdevil");
+					redrawErrorLayers(tr(LAYER_NAME));
 				} catch (IOException e1) {
 					Logging.debug(e1.getMessage());
 					e1.printStackTrace();
@@ -380,8 +377,13 @@ public class KeepRightInformation extends GenericInformation {
 		jPanel.add(fixed);
 		jPanel.add(falsePositive);
 		if (node.hasKey("actionTaken")) {
-			fixed.setEnabled(false);
-			falsePositive.setEnabled(false);
+			if ("true".equals(node.get("actionTaken"))) {
+				fixed.setEnabled(false);
+				falsePositive.setEnabled(true);
+			} else if ("false".equals(node.get("actionTaken"))) {
+				fixed.setEnabled(true);
+				falsePositive.setEnabled(false);
+			}
 		}
 		return jPanel;
 	}
