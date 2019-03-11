@@ -11,8 +11,11 @@ import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.osm.BBox;
+import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
+import org.openstreetmap.josm.data.osm.Relation;
 import org.openstreetmap.josm.data.osm.User;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.Layer;
@@ -76,11 +79,46 @@ public abstract class GenericInformation {
 
 	/**
 	 * Get the errors for a layer
-	 * @param bounds {@code List<Bounds> bounds} to iterate and get errors for
+	 * @param dataSet {@code DataSet} to get errors for
+	 * @param progressMonitor The {@code ProgressMonitor} with which to monitor progress
+	 * @return A new {@code Layer} that has error information for the {@code bounds}
+	 */
+	public Layer getErrors(DataSet dataSet, ProgressMonitor progressMonitor) {
+		List<Bounds> bounds = dataSet.getDataSourceBounds();
+		if (bounds.isEmpty()) {
+			bounds = new ArrayList<>();
+			Bounds tBound = getDefaultBounds(dataSet);
+			bounds.add(tBound);
+		}
+		return getErrors(bounds, progressMonitor);
+	}
+
+	/**
+	 * Get errors given a list of bounds
+	 * @param bounds {@code List<Bounds>} to get data for
 	 * @param progressMonitor The {@code ProgressMonitor} with which to monitor progress
 	 * @return A new {@code Layer} that has error information for the {@code bounds}
 	 */
 	public abstract Layer getErrors(List<Bounds> bounds, ProgressMonitor progressMonitor);
+
+	/**
+	 * Get the bounds for a dataSet
+	 * @param dataSet with the data of interest
+	 * @return The bounds that encompasses the @{code DataSet}
+	 */
+	public static Bounds getDefaultBounds(DataSet dataSet) {
+		BBox bound = new BBox();
+		for (OsmPrimitive osm : dataSet.allPrimitives()) {
+			// Don't look at relations -- they can get really large, really fast.
+			if (!(osm instanceof Relation)) {
+				bound.add(osm.getBBox());
+			}
+		}
+
+		Bounds rBound = new Bounds(bound.getBottomRight());
+		rBound.extend(bound.getTopLeft());
+		return rBound;
+	}
 
 	/**
 	 * Build an error list to download

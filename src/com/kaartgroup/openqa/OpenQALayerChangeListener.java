@@ -63,7 +63,6 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 			OpenQADataSetListener listener = new OpenQADataSetListener(CACHE_DIR);
 			layer.data.addDataSetListener(listener);
 			listeners.put(layer, listener);
-
 			updateOpenQALayers(CACHE_DIR);
 		}
 	}
@@ -95,7 +94,6 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 		}
 		UpdateLayersTask osmose = new UpdateLayersTask(new OsmoseInformation(CACHE_DIR), new PleaseWaitProgressMonitor());
 		UpdateLayersTask keepright = new UpdateLayersTask(new KeepRightInformation(CACHE_DIR), new PleaseWaitProgressMonitor());
-
 		MainApplication.worker.submit(osmose);
 		MainApplication.worker.submit(keepright);
 	}
@@ -124,7 +122,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 			for (OsmDataLayer layer : osmDataLayers) {
 				if (isCanceled) break;
 				getProgressMonitor().indeterminateSubTask(tr("Updating layers"));
-				Layer tlayer = type.getErrors(layer.getDataSet().getDataSourceBounds(), getProgressMonitor());
+				Layer tlayer = type.getErrors(layer.getDataSet(), getProgressMonitor());
 				if (toAdd != null) {
 					toAdd.mergeFrom(tlayer);
 				} else {

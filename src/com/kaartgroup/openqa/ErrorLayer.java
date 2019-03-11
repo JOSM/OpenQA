@@ -13,7 +13,6 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -48,7 +47,6 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
-import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
 import com.kaartgroup.openqa.profiles.GenericInformation;
@@ -74,6 +72,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
     private JPanel displayedPanel;
     private JWindow displayedWindow;
 
+    ArrayList<Node> previousNodes;
+    int nodeIndex = 0;
+
     final String CACHE_DIR;
 
     final GenericInformation type;
@@ -95,6 +96,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
     public void hookUpMapViewer() {
         MainApplication.getMap().mapView.addMouseListener(this);
         ds.addHighlightUpdateListener(this);
+        ds.addSelectionListener(this);
     }
 
     @Override
@@ -113,7 +115,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
      */
     public boolean addNotes(DataSet newDataSet) {
         ds.mergeFrom(newDataSet);
-        ds.addSelectionListener(this);
         return true;
     }
 
@@ -125,9 +126,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
     @Override
     public void paint(Graphics2D g, MapView mv, Bounds bbox) {
         final ImageSizes size = ImageProvider.ImageSizes.LARGEICON;
-        final int iconHeight = size.getAdjustedHeight();
-        final int iconWidth = size.getAdjustedWidth();
-
         for (Node node : ds.getNodes()) {
             Point p = mv.getPoint(node.getCoor());
             String error = type.getError(node);
@@ -136,15 +134,29 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
             int height = icon.getIconHeight();
             g.drawImage(icon.getImage(), p.x - (width / 2), p.y - (height / 2), MainApplication.getMap().mapView);
         }
+        createNodeWindow(g, mv, size);
+    }
 
-        Collection<Node> selectedNodes = ds.getSelectedNodes();
+    private void createNodeWindow(Graphics2D g, MapView mv, ImageSizes size) {
+        ArrayList<Node> selectedNodes = new ArrayList<>(ds.getSelectedNodes());
+        selectedNodes.sort(null);
         if (!selectedNodes.isEmpty() && MainApplication.getMap().mapMode != null && MainApplication.getMap().mapMode instanceof SelectAction) {
-            Node selectedNode = selectedNodes.iterator().next();
+            if ((selectedNodes.contains(displayedNode) && nodeIndex >= selectedNodes.size())
+                    || !selectedNodes.contains(displayedNode)) {
+                    nodeIndex = 0;
+            }
+
+            Node selectedNode = selectedNodes.get(nodeIndex);
+
+            final int iconHeight = size.getAdjustedHeight();
+            final int iconWidth = size.getAdjustedWidth();
             paintSelectedNode(g, mv, iconHeight, iconWidth, selectedNode);
         } else {
             ds.clearSelection();
+            nodeIndex = 0;
             hideNodeWindow();
         }
+        previousNodes = selectedNodes;
     }
 
     /**
@@ -289,29 +301,31 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
             return;
         }
 
-        Node closestNode = getClosestNode(e.getPoint(), 10);
-        if (closestNode != null) {
+        ArrayList<Node> closestNode = getClosestNode(e.getPoint(), 10);
+        if (!closestNode.isEmpty()) {
             ds.setSelected(closestNode);
         } else {
             ds.clearSelection();
         }
+        if (!closestNode.contains(displayedNode)) {
+            hideNodeWindow();
+        }
+        invalidate();
+        nodeIndex++;
     }
 
     /**
-     * Get the closest node to a point
+     * Get the closest nodes to a point
      * @param mousePoint The current location of the mouse
      * @param snapDistance The maximum distance to find the closest node
-     * @return The closest {@code Node}
+     * @return The closest {@code Node}s
      */
-    private Node getClosestNode(Point mousePoint, double snapDistance) {
-        double minDistance = Double.MAX_VALUE;
-        Node closestNode = null;
+    private ArrayList<Node> getClosestNode(Point mousePoint, double snapDistance) {
+        ArrayList<Node> closestNode = new ArrayList<>();
         for (Node node : ds.getNodes()) {
             Point notePoint = MainApplication.getMap().mapView.getPoint(node.getBBox().getCenter());
-            double dist = mousePoint.distanceSq(notePoint);
-            if (minDistance > dist && mousePoint.distance(notePoint) < snapDistance) {
-                minDistance = dist;
-                closestNode = node;
+            if (mousePoint.distance(notePoint) < snapDistance) {
+                closestNode.add(node);
             }
         }
         return closestNode;
@@ -405,17 +419,15 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         // Do nothing
     }
 
-	@Override
-	public void highlightUpdated(HighlightUpdateEvent e) {
-		for (OsmPrimitive osmPrimitive : e.getDataSet().allPrimitives()) {
-			if (osmPrimitive instanceof Node && (osmPrimitive.hasKey("actionTaken") || "false".equals(osmPrimitive.get("actionTaken")))) {
-				Logging.info("Getting information for {0}", osmPrimitive.toString());
-				type.getNodeToolTip((Node) osmPrimitive);
-				if (!osmPrimitive.hasKey("actionTaken")) {
-					osmPrimitive.put("actionTaken", "true");
-				}
-			}
-		}
-	}
-
+    @Override
+    public void highlightUpdated(HighlightUpdateEvent e) {
+        for (OsmPrimitive osmPrimitive : e.getDataSet().allPrimitives()) {
+            if (osmPrimitive instanceof Node && (osmPrimitive.hasKey("actionTaken") || "false".equals(osmPrimitive.get("actionTaken")))) {
+                type.getNodeToolTip((Node) osmPrimitive);
+                if (!osmPrimitive.hasKey("actionTaken")) {
+                    osmPrimitive.put("actionTaken", "true");
+                }
+            }
+        }
+    }
 }
