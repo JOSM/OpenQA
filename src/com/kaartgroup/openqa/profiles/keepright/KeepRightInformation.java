@@ -331,21 +331,12 @@ public class KeepRightInformation extends GenericInformation {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				try {
-					CachedFile cache = new CachedFile(String.format(commentUrl, FIXED, "", node.get("schema"), node.get("error_id")));
-					cache.setDestDir(CACHE_DIR);
-					cache.getFile();
-					cache.close();
-					cache.clear();
-					node.put("actionTaken", "true");
-					fixed.setEnabled(false);
-					falsePositive.setEnabled(true);
-					node.put("error_type", "zapangel");
-					redrawErrorLayers(tr(LAYER_NAME));
-				} catch (IOException e1) {
-					Logging.debug(e1.getMessage());
-					e1.printStackTrace();
-				}
+				new SendInformation(String.format(commentUrl, FIXED, "", node.get("schema"), node.get("error_id")), CACHE_DIR).run();
+				node.put("actionTaken", "true");
+				fixed.setEnabled(false);
+				falsePositive.setEnabled(true);
+				node.put("error_type", "zapangel");
+				redrawErrorLayers(tr(LAYER_NAME));
 			}
 		});
 
@@ -354,21 +345,12 @@ public class KeepRightInformation extends GenericInformation {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				try {
-					CachedFile cache = new CachedFile(String.format(commentUrl, FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")));
-					cache.setDestDir(CACHE_DIR);
-					cache.getFile();
-					cache.close();
-					cache.clear();
-					node.put("actionTaken", "false");
-					fixed.setEnabled(true);
-					falsePositive.setEnabled(false);
-					node.put("error_type", "zapdevil");
-					redrawErrorLayers(tr(LAYER_NAME));
-				} catch (IOException e1) {
-					Logging.debug(e1.getMessage());
-					e1.printStackTrace();
-				}
+				new SendInformation(String.format(commentUrl, FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")), CACHE_DIR).run();
+				node.put("actionTaken", "false");
+				fixed.setEnabled(true);
+				falsePositive.setEnabled(false);
+				node.put("error_type", "zapdevil");
+				redrawErrorLayers(tr(LAYER_NAME));
 			}
 		});
 

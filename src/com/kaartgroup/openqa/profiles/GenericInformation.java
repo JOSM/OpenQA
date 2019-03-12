@@ -3,6 +3,7 @@
  */
 package com.kaartgroup.openqa.profiles;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -23,6 +24,7 @@ import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.tools.ImageProvider;
+import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
 import com.kaartgroup.openqa.CachedFile;
@@ -215,4 +217,27 @@ public abstract class GenericInformation {
 			layer.invalidate();
 		}
 	}
+
+	protected class SendInformation implements Runnable {
+		final String url;
+		final String CACHE_DIR;
+
+		public SendInformation(String url, String CACHE_DIR) {
+			this.url = url;
+			this.CACHE_DIR = CACHE_DIR;
+		}
+
+		@Override
+		public void run() {
+			try (CachedFile cache = new CachedFile(url)) {
+				cache.setDestDir(CACHE_DIR);
+				cache.getFile();
+				cache.close();
+				cache.clear();
+			} catch (IOException e) {
+				Logging.debug(e.getMessage());
+			}
+		}
+	}
+
 }

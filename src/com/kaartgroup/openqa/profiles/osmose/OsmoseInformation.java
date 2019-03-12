@@ -372,21 +372,12 @@ public class OsmoseInformation extends GenericInformation {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				try {
-					CachedFile cache = new CachedFile(apiUrl + "done");
-					cache.setDestDir(CACHE_DIR);
-					cache.getFile();
-					cache.close();
-					cache.clear();
-					node.put("actionTaken", "true");
-					fixed.setEnabled(false);
-					falsePositive.setEnabled(true);
-					node.put("item", "fixed");
-					redrawErrorLayers(tr(LAYER_NAME));
-				} catch (IOException e1) {
-					Logging.debug(e1.getMessage());
-					e1.printStackTrace();
-				}
+				new SendInformation(apiUrl.concat("done"), CACHE_DIR).run();
+				node.put("actionTaken", "true");
+				fixed.setEnabled(false);
+				falsePositive.setEnabled(true);
+				node.put("item", "fixed");
+				redrawErrorLayers(tr(LAYER_NAME));
 			}
 		});
 
@@ -395,21 +386,12 @@ public class OsmoseInformation extends GenericInformation {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				try {
-					CachedFile cache = new CachedFile(apiUrl + "done");
-					cache.setDestDir(CACHE_DIR);
-					cache.getFile();
-					cache.close();
-					cache.clear();
-					node.put("actionTaken", "false");
-					fixed.setEnabled(true);
-					falsePositive.setEnabled(false);
-					node.put("item", "falsePositive");
-					redrawErrorLayers(tr(LAYER_NAME));
-				} catch (IOException e1) {
-					Logging.debug(e1.getMessage());
-					e1.printStackTrace();
-				}
+				new SendInformation(apiUrl.concat("false"), CACHE_DIR).run();
+				node.put("actionTaken", "false");
+				fixed.setEnabled(true);
+				falsePositive.setEnabled(false);
+				node.put("item", "falsePositive");
+				redrawErrorLayers(tr(LAYER_NAME));
 			}
 		});
 
