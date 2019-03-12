@@ -28,6 +28,8 @@ import javax.swing.UIManager;
 import javax.swing.plaf.basic.BasicHTML;
 import javax.swing.text.View;
 
+import org.openstreetmap.josm.actions.LassoModeAction;
+import org.openstreetmap.josm.actions.mapmode.MapMode;
 import org.openstreetmap.josm.actions.mapmode.SelectAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.DataSelectionListener;
@@ -140,7 +142,8 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
     private void createNodeWindow(Graphics2D g, MapView mv, ImageSizes size) {
         ArrayList<Node> selectedNodes = new ArrayList<>(ds.getSelectedNodes());
         selectedNodes.sort(null);
-        if (!selectedNodes.isEmpty() && MainApplication.getMap().mapMode != null && MainApplication.getMap().mapMode instanceof SelectAction) {
+        MapMode mode = MainApplication.getMap().mapMode;
+        if (!selectedNodes.isEmpty() && mode != null && (mode instanceof SelectAction || mode instanceof LassoModeAction)) {
             if ((selectedNodes.contains(displayedNode) && nodeIndex >= selectedNodes.size())
                     || !selectedNodes.contains(displayedNode)) {
                     nodeIndex = 0;
