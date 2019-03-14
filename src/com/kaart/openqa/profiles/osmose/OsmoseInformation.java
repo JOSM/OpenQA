@@ -54,6 +54,7 @@ public class OsmoseInformation extends GenericInformation {
 		super(CACHE_DIR);
 	}
 
+	@Override
 	public String getName() {
 		return "Osmose";
 	}

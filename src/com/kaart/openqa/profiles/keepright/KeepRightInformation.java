@@ -147,6 +147,7 @@ public class KeepRightInformation extends GenericInformation {
 		super(CACHE_DIR);
 	}
 
+	@Override
 	public String getName() {
 		return "KeepRight";
 	}
