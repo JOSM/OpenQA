@@ -1,7 +1,7 @@
 /**
  *
  */
-package com.kaartgroup.openqa.profiles.keepright;
+package com.kaart.openqa.profiles.keepright;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
@@ -19,7 +19,7 @@ import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.GBC;
 
-import com.kaartgroup.openqa.profiles.ProfilePreferences;
+import com.kaart.openqa.profiles.ProfilePreferences;
 
 /**
  * @author Taylor Smock

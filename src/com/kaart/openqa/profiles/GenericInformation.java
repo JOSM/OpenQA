@@ -1,7 +1,7 @@
 /**
  *
  */
-package com.kaartgroup.openqa.profiles;
+package com.kaart.openqa.profiles;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,9 +29,9 @@ import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
-import com.kaartgroup.openqa.CachedFile;
-import com.kaartgroup.openqa.ErrorLayer;
-import com.kaartgroup.openqa.OpenQA;
+import com.kaart.openqa.CachedFile;
+import com.kaart.openqa.ErrorLayer;
+import com.kaart.openqa.OpenQA;
 
 /**
  * @author Taylor Smock
@@ -255,7 +255,7 @@ public abstract class GenericInformation {
 		DataSet data = MainApplication.getLayerManager().getActiveDataSet();
 		// TODO figure out if we want to keep this
 		boolean addChangesetTags = Config.getPref().getBoolean(OpenQA.PREF_PREFIX.concat("changesetTags"), false);
-		if (data != null && !data.isEmpty() && addChangesetTags) {
+		if (addChangesetTags && data != null && !data.isEmpty()) {
 			Map<String, String> tags = data.getChangeSetTags();
 			String key = OpenQA.NAME.toLowerCase();
 			// Clear the changeset tag if needed

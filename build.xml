@@ -16,18 +16,18 @@
     <property name="ant.build.javac.target" value="1.8"/>
 
     <!-- enter the SVN commit message -->
-    <property name="commit.message" value="Commit message"/>
+    <property name="commit.message" value="OpenQA update"/>
     <!-- enter the *lowest* JOSM version this plugin is currently compatible with -->
-    <property name="plugin.main.version" value="10580"/>
+    <property name="plugin.main.version" value="14385"/>
 
     <!-- Configure these properties (replace "..." accordingly).
          See https://josm.openstreetmap.de/wiki/DevelopersGuide/DevelopingPlugins
     -->
     <property name="plugin.author" value="Taylor Smock"/>
-    <property name="plugin.class" value="com.kaartgroup.openqa.OpenQA"/>
+    <property name="plugin.class" value="com.kaart.openqa.OpenQA"/>
     <property name="plugin.description" value="OpenQA validation checker (supports Osmose and Keepright))"/>
     <property name="plugin.icon" value="images/keepright.png"/>
-    <property name="plugin.link" value="https://www.keepright.at"/>
+    <property name="plugin.link" value="https://www.kaart.com"/>
     <property name="plugin.canloadatruntime" value="true"/>
     <!--<property name="plugin.early" value="..."/>-->
     <!--<property name="plugin.requires" value="..."/>-->

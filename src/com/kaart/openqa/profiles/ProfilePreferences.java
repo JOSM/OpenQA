@@ -1,4 +1,4 @@
-package com.kaartgroup.openqa.profiles;
+package com.kaart.openqa.profiles;
 
 import java.awt.Component;
 

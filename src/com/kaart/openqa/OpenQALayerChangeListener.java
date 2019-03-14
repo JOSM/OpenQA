@@ -1,7 +1,7 @@
 /**
  *
  */
-package com.kaartgroup.openqa;
+package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
@@ -25,8 +25,8 @@ import org.openstreetmap.josm.io.OsmTransferException;
 import org.openstreetmap.josm.tools.Logging;
 import org.xml.sax.SAXException;
 
-import com.kaartgroup.openqa.profiles.keepright.KeepRightInformation;
-import com.kaartgroup.openqa.profiles.osmose.OsmoseInformation;
+import com.kaart.openqa.profiles.keepright.KeepRightInformation;
+import com.kaart.openqa.profiles.osmose.OsmoseInformation;
 
 /**
  * @author Taylor Smock

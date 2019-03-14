@@ -1,4 +1,4 @@
-package com.kaartgroup.openqa;
+package com.kaart.openqa;
 
 import java.io.IOException;
 

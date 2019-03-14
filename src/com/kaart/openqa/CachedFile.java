@@ -1,5 +1,5 @@
 // License: GPL. For details, see LICENSE file.
-package com.kaartgroup.openqa;
+package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 

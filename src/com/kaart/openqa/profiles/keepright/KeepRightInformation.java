@@ -1,7 +1,7 @@
 /**
  *
  */
-package com.kaartgroup.openqa.profiles.keepright;
+package com.kaart.openqa.profiles.keepright;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
@@ -19,6 +19,7 @@ import javax.swing.JButton;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
+import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.io.XmlWriter;
@@ -27,9 +28,10 @@ import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.openstreetmap.josm.tools.Logging;
 
-import com.kaartgroup.openqa.CachedFile;
-import com.kaartgroup.openqa.GeoJsonReader;
-import com.kaartgroup.openqa.profiles.GenericInformation;
+import com.kaart.openqa.CachedFile;
+import com.kaart.openqa.GeoJsonReader;
+import com.kaart.openqa.OpenQA;
+import com.kaart.openqa.profiles.GenericInformation;
 
 /**
  * @author Taylor Smock
@@ -173,6 +175,9 @@ public class KeepRightInformation extends GenericInformation {
 		DataSet ds = new DataSet();
 		try {
 			ds = GeoJsonReader.parseDataSet(cache.getInputStream(), null);
+			for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
+				osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get("error_id")), 1);
+			}
 		} catch (IllegalDataException | IOException e) {
 			Logging.debug(e.getMessage());
 			e.printStackTrace();
@@ -182,9 +187,9 @@ public class KeepRightInformation extends GenericInformation {
 
 	@Override
 	public DataSet getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
-		monitor.subTask(tr("Getting {0} errors", "KeepRight"));
+		monitor.subTask(tr("Getting {0} errors", getName()));
 		DataSet returnDataSet = null;
-		String windowTitle = tr("Updating {0} information", "KeepRight");
+		String windowTitle = tr("Updating {0} information", getName());
 		if (bounds.size() > 10) {
 			monitor.subTask(windowTitle);
 			monitor.setTicksCount(bounds.size());
@@ -231,7 +236,7 @@ public class KeepRightInformation extends GenericInformation {
 	@Override
 	public String buildDownloadErrorList() {
 		String list = "";
-		List<String> enabled = Config.getPref().getList("openqa.keepright-tests", buildDefaultPref());
+		List<String> enabled = Config.getPref().getList(OpenQA.PREF_PREFIX.concat(getName().toLowerCase()).concat("-tests"), buildDefaultPref());
 		for (int i = 0; i < enabled.size(); i++) {
 			list += enabled.get(i);
 			if (i < enabled.size() - 1) {
@@ -251,7 +256,7 @@ public class KeepRightInformation extends GenericInformation {
 	@Override
 	public String getNodeToolTip(Node node) {
 		StringBuilder sb = new StringBuilder("<html>");
-		sb.append(tr("KeepRight"))
+		sb.append(tr(getName()))
 		  .append(": ").append(node.get("title"))
 		  .append(" - <a href=")
 		  .append(String.format(baseErrorUrl, node.get("schema"), node.get("error_id")))
@@ -293,7 +298,7 @@ public class KeepRightInformation extends GenericInformation {
 				falsePositive.setEnabled(true);
 				node.put("error_type", "zapangel");
 				redrawErrorLayers(tr(LAYER_NAME));
-				addChangeSetTag("keepright", node.get("error_id"));
+				addChangeSetTag(getName().toLowerCase(), node.get("error_id"));
 			}
 		});
 

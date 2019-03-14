@@ -1,7 +1,7 @@
 /**
  *
  */
-package com.kaartgroup.openqa.profiles.osmose;
+package com.kaart.openqa.profiles.osmose;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
@@ -28,14 +28,15 @@ import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
+import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.openstreetmap.josm.tools.Logging;
 
-import com.kaartgroup.openqa.CachedFile;
-import com.kaartgroup.openqa.profiles.GenericInformation;
+import com.kaart.openqa.CachedFile;
+import com.kaart.openqa.profiles.GenericInformation;
 
 /**
  * @author Taylor Smock
@@ -98,6 +99,9 @@ public class OsmoseInformation extends GenericInformation {
 						}
 					}
 				}
+			}
+			for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
+				osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get("error_id")), 1);
 			}
 		} catch (IOException e) {
 			Logging.debug(e.getMessage());

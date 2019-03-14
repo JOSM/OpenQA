@@ -1,7 +1,7 @@
 /**
  *
  */
-package com.kaartgroup.openqa;
+package com.kaart.openqa;
 
 import org.openstreetmap.josm.data.osm.event.AbstractDatasetChangedEvent;
 import org.openstreetmap.josm.data.osm.event.DataChangedEvent;

@@ -1,5 +1,5 @@
 // License: Apache 2.0. For details, see LICENSE file.
-package com.kaartgroup.openqa;
+package com.kaart.openqa;
 
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;

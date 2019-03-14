@@ -1,4 +1,4 @@
-package com.kaartgroup.openqa;
+package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 import static org.openstreetmap.josm.tools.I18n.trn;
@@ -13,6 +13,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -60,11 +61,12 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.Utils;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.openstreetmap.josm.tools.bugreport.BugReport;
 import org.openstreetmap.josm.tools.bugreport.ReportedException;
 
-import com.kaartgroup.openqa.profiles.GenericInformation;
+import com.kaart.openqa.profiles.GenericInformation;
 
 public class ErrorLayer extends AbstractModifiableLayer implements MouseListener, DataSelectionListener, HighlightUpdateListener {
 	/**
@@ -521,7 +523,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		actions.add(LayerListDialog.getInstance().createShowHideLayerAction());
 		actions.add(LayerListDialog.getInstance().createDeleteLayerAction());
 		actions.add(new LayerListPopup.InfoAction(this));
-		actions.add(new ForceClear(CACHE_DIR));
+		actions.add(new ForceClear());
 		for (GenericInformation type : enabledSources.keySet()) {
 			actions.add(new ToggleSource(type));
 		}
@@ -547,6 +549,38 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			invalidate();
 		}
 	}
+
+	private class ForceClear extends AbstractAction {
+		private static final long serialVersionUID = -4472400258489788312L;
+
+		public ForceClear() {
+	        new ImageProvider("dialogs", "delete").getResource().attachImageIcon(this, true);
+	        putValue(SHORT_DESCRIPTION, tr("Clear cached information for OpenQA."));
+	        putValue(NAME, tr("Clear"));
+		}
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			File directory = new File(CACHE_DIR, GenericInformation.DATA_SUB_DIR);
+			Utils.deleteDirectory(directory);
+			directory.mkdirs();
+			for (GenericInformation type : dataSets.keySet()) {
+				DataSet ds = dataSets.get(type);
+				DataSet temporaryDataSet = new DataSet();
+				for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
+					if (osmPrimitive.hasKey("actionTaken")) {
+						ds.removePrimitive(osmPrimitive);
+						temporaryDataSet.addPrimitive(osmPrimitive);
+					}
+				}
+				ds.clear();
+				ds.mergeFrom(temporaryDataSet);
+				dataSets.put(type, ds);
+			}
+			OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
+		}
+
+	}
+
 
 	/**
 	 * Inserts HTML line breaks ({@code <br>} at the end of each sentence mark

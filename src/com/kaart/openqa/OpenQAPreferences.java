@@ -1,4 +1,4 @@
-package com.kaartgroup.openqa;
+package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
@@ -13,18 +13,18 @@ import org.openstreetmap.josm.gui.preferences.SubPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.TabPreferenceSetting;
 import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
 
-import com.kaartgroup.openqa.profiles.ProfilePreferences;
-import com.kaartgroup.openqa.profiles.keepright.KeepRightPreferences;
-import com.kaartgroup.openqa.profiles.osmose.OsmosePreferences;
+import com.kaart.openqa.profiles.ProfilePreferences;
+import com.kaart.openqa.profiles.keepright.KeepRightPreferences;
+import com.kaart.openqa.profiles.osmose.OsmosePreferences;
 
 public class OpenQAPreferences extends DefaultTabPreferenceSetting implements SubPreferenceSetting {
 
 	JPanel testPanel;
 
 	final String CACHE_DIR;
-	
+
 	ArrayList<ProfilePreferences> tests = new ArrayList<>();
-	
+
 	public OpenQAPreferences(String directory) {
 		super("keepright.png", tr("OpenQA"), tr("OpenQA Settings"));
 		CACHE_DIR = directory;
@@ -35,7 +35,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 		testPanel = new VerticallyScrollablePanel(new GridBagLayout());
 		tests.add(new KeepRightPreferences(CACHE_DIR));
 		tests.add(new OsmosePreferences(CACHE_DIR));
-		
+
 		for (ProfilePreferences preference : tests) {
 			gui.getValidatorPreference().addSubTab(preference, preference.getTitle(), preference.createSubTab());
 		}
