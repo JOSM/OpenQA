@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 
 import javax.swing.ImageIcon;
@@ -23,12 +24,14 @@ import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.XmlWriter;
+import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
 import com.kaartgroup.openqa.CachedFile;
 import com.kaartgroup.openqa.ErrorLayer;
+import com.kaartgroup.openqa.OpenQA;
 
 /**
  * @author Taylor Smock
@@ -58,6 +61,8 @@ public abstract class GenericInformation {
 	public GenericInformation(String CACHE_DIR) {
 		this.CACHE_DIR = CACHE_DIR;
 	}
+
+	public abstract String getName();
 
 	/**
 	 * Cache a file for 24 hours
@@ -246,4 +251,27 @@ public abstract class GenericInformation {
 		}
 	}
 
+	public static void addChangeSetTag(String source, String id) {
+		DataSet data = MainApplication.getLayerManager().getActiveDataSet();
+		// TODO figure out if we want to keep this
+		boolean addChangesetTags = Config.getPref().getBoolean(OpenQA.PREF_PREFIX.concat("changesetTags"), false);
+		if (data != null && !data.isEmpty() && addChangesetTags) {
+			Map<String, String> tags = data.getChangeSetTags();
+			String key = OpenQA.NAME.toLowerCase();
+			// Clear the changeset tag if needed
+			if (source == null || id == null) {
+				data.addChangeSetTag(key, "");
+				return;
+			}
+			if (data.isModified()) {
+				String addTag = source.concat("-").concat(id);
+				if (tags.containsKey(key) && !tags.get(key).isBlank()) {
+					addTag = tags.get(key).concat(",").concat(addTag);
+				}
+				data.addChangeSetTag(key, addTag);
+			} else {
+				data.addChangeSetTag(key, "");
+			}
+		}
+	}
 }

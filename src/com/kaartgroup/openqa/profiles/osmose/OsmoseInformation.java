@@ -53,6 +53,10 @@ public class OsmoseInformation extends GenericInformation {
 		super(CACHE_DIR);
 	}
 
+	public String getName() {
+		return "Osmose";
+	}
+
 	private DataSet getGeoJsonErrors(Bounds bound) {
 		CachedFile cache = getFile(bound);
 		DataSet ds = new DataSet();
@@ -376,6 +380,7 @@ public class OsmoseInformation extends GenericInformation {
 				falsePositive.setEnabled(true);
 				node.put("item", "fixed");
 				redrawErrorLayers(tr(LAYER_NAME));
+				addChangeSetTag("osmose", node.get("error_id"));
 			}
 		});
 

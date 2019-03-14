@@ -145,6 +145,10 @@ public class KeepRightInformation extends GenericInformation {
 		super(CACHE_DIR);
 	}
 
+	public String getName() {
+		return "KeepRight";
+	}
+
 	private CachedFile getFile(String type, Bounds bound) {
 		String enabled = buildDownloadErrorList();
 		String url = baseApi + "format=" + type + "&ch=" + enabled;
@@ -289,6 +293,7 @@ public class KeepRightInformation extends GenericInformation {
 				falsePositive.setEnabled(true);
 				node.put("error_type", "zapangel");
 				redrawErrorLayers(tr(LAYER_NAME));
+				addChangeSetTag("keepright", node.get("error_id"));
 			}
 		});
 

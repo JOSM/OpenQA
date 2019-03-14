@@ -8,6 +8,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -81,6 +83,8 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	private static final Pattern SENTENCE_MARKS_EASTERN = Pattern.compile("(\\u3002)([\\p{L}\\p{Punct}])");
 
 	HashMap<GenericInformation, DataSet> dataSets = new HashMap<>();
+	HashMap<GenericInformation, Boolean> enabledSources = new HashMap<>();
+
 	private Node displayedNode;
 	private JPanel displayedPanel;
 	private JWindow displayedWindow;
@@ -116,6 +120,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 				if (!(obj instanceof GenericInformation)) continue;
 				GenericInformation info = (GenericInformation) obj;
 				dataSets.put(info, new DataSet());
+				enabledSources.put(info, true);
 			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
 					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 				e.printStackTrace();
@@ -234,6 +239,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		@Override
 		public void run() {
 			for (GenericInformation type : dataSets.keySet()) {
+				if (enabledSources.containsKey(type) && !enabledSources.get(type)) continue;
 				realrun(type);
 			}
 		}
@@ -444,6 +450,10 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		if (!SwingUtilities.isLeftMouseButton(e)) {
 			return;
 		}
+		DataSet ds = MainApplication.getLayerManager().getActiveDataSet();
+		if (!ds.isModified()) {
+			GenericInformation.addChangeSetTag(null, null);
+		}
 		new GetClosestNode(e).run();
 	}
 
@@ -512,7 +522,30 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		actions.add(LayerListDialog.getInstance().createDeleteLayerAction());
 		actions.add(new LayerListPopup.InfoAction(this));
 		actions.add(new ForceClear(CACHE_DIR));
+		for (GenericInformation type : enabledSources.keySet()) {
+			actions.add(new ToggleSource(type));
+		}
 		return actions.toArray(new Action[0]);
+	}
+
+	private class ToggleSource extends AbstractAction {
+		private static final long serialVersionUID = -3530922723120575358L;
+		private GenericInformation type;
+		public ToggleSource(GenericInformation type) {
+			this.type = type;
+			if (!enabledSources.get(type)) {
+				new ImageProvider("warning-small").getResource().attachImageIcon(this, true);
+			} else {
+				new ImageProvider("dialogs", "validator").getResource().attachImageIcon(this, true);
+			}
+	        putValue(SHORT_DESCRIPTION, tr("Toggle source {0}", type.getName()));
+	        putValue(NAME, tr("Toggle source {0}", type.getName()));
+		}
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			enabledSources.put(type, !enabledSources.get(type));
+			invalidate();
+		}
 	}
 
 	/**
