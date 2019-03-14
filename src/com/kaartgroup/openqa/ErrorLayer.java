@@ -12,14 +12,20 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.swing.Action;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.JWindow;
@@ -32,6 +38,7 @@ import org.openstreetmap.josm.actions.LassoModeAction;
 import org.openstreetmap.josm.actions.mapmode.MapMode;
 import org.openstreetmap.josm.actions.mapmode.SelectAction;
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.coor.EastNorth;
 import org.openstreetmap.josm.data.osm.DataSelectionListener;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.HighlightUpdateListener;
@@ -44,12 +51,16 @@ import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.AbstractModifiableLayer;
 import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.gui.progress.swing.PleaseWaitProgressMonitor;
 import org.openstreetmap.josm.gui.widgets.HtmlPanel;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
-import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
+import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
+import org.openstreetmap.josm.tools.bugreport.BugReport;
+import org.openstreetmap.josm.tools.bugreport.ReportedException;
 
 import com.kaartgroup.openqa.profiles.GenericInformation;
 
@@ -69,28 +80,70 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	 */
 	private static final Pattern SENTENCE_MARKS_EASTERN = Pattern.compile("(\\u3002)([\\p{L}\\p{Punct}])");
 
-	DataSet ds = new DataSet();
+	HashMap<GenericInformation, DataSet> dataSets = new HashMap<>();
 	private Node displayedNode;
 	private JPanel displayedPanel;
 	private JWindow displayedWindow;
 	private PaintWindow window;
 
 	ArrayList<Node> previousNodes;
-	int nodeIndex = 0;
 
 	final String CACHE_DIR;
 
-	final GenericInformation type;
+	EastNorth lastClick;
+
 
 	/**
 	 * Create a new ErrorLayer using a class that extends {@code GenericInformation}
 	 * @param type A class that extends {@code GenericInformation}
 	 */
-	public ErrorLayer(GenericInformation type) {
-		super(type.getLayerName());
-		CACHE_DIR = type.getCacheDir();
-		this.type = type;
+	public ErrorLayer(String CACHE_DIR) {
+		super(tr("{0} Layers", OpenQA.NAME));
+		this.CACHE_DIR = CACHE_DIR;
 		hookUpMapViewer();
+	}
+
+	/**
+	 * Set the error classes
+	 * @param types The types of class to get errors for. Must extend GenericInformation.
+	 */
+	public void setErrorClasses(Class<?> ... types) {
+		for (Class<?> type : types) {
+			if (!GenericInformation.class.isAssignableFrom(type)) continue;
+			try {
+				Constructor<?> constructor = type.getConstructor(String.class);
+				Object obj = constructor.newInstance(CACHE_DIR);
+				if (!(obj instanceof GenericInformation)) continue;
+				GenericInformation info = (GenericInformation) obj;
+				dataSets.put(info, new DataSet());
+			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
+				e.printStackTrace();
+				new BugReport(new ReportedException(e));
+			}
+		}
+		addListeners();
+	}
+
+	public void update() {
+		List<OsmDataLayer> dataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
+		PleaseWaitProgressMonitor progressMonitor = new PleaseWaitProgressMonitor();
+		progressMonitor.beginTask(tr("Updating {0} layers", OpenQA.NAME));
+		for (GenericInformation type : dataSets.keySet()) {
+			for (OsmDataLayer layer : dataLayers) {
+				DataSet ds = dataSets.get(type);
+				progressMonitor.indeterminateSubTask(tr("Updating {0}", type.getLayerName()));
+				if (ds == null || ds.isEmpty()) {
+					ds = type.getErrors(layer.getDataSet(), progressMonitor);
+				} else {
+					ds.mergeFrom(type.getErrors(layer.getDataSet(), progressMonitor));
+				}
+				dataSets.put(type, ds);
+			}
+		}
+		progressMonitor.finishTask();
+		progressMonitor.close();
+		invalidate();
 	}
 
 	/**
@@ -98,15 +151,27 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	 */
 	public void hookUpMapViewer() {
 		MainApplication.getMap().mapView.addMouseListener(this);
-		ds.addHighlightUpdateListener(this);
-		ds.addSelectionListener(this);
+		addListeners();
+	}
+
+	private void addListeners() {
+		for (DataSet ds : dataSets.values()) {
+			ds.addHighlightUpdateListener(this);
+			ds.addSelectionListener(this);
+		}
 	}
 
 	@Override
 	public synchronized void destroy() {
 		MainApplication.getMap().mapView.removeMouseListener(this);
-		ds.removeHighlightUpdateListener(this);
-		ds.removeSelectionListener(this);
+		for (DataSet ds : dataSets.values()) {
+			try {
+				ds.removeHighlightUpdateListener(this);
+				ds.removeSelectionListener(this);
+			} catch (IllegalArgumentException e) {
+				Logging.debug(e.getMessage());
+			}
+		}
 		hideNodeWindow();
 		super.destroy();
 	}
@@ -116,20 +181,32 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	 * @param newDataSet {@code DataSet} with notes
 	 * @return true if added
 	 */
-	public boolean addNotes(DataSet newDataSet) {
-		ds.mergeFrom(newDataSet);
+	public boolean addNotes(GenericInformation type, DataSet newDataSet) {
+		for (GenericInformation currentType : dataSets.keySet()) {
+			if (currentType.getClass().equals(type.getClass())) {
+				dataSets.get(currentType).mergeFrom(newDataSet);
+				break;
+			}
+		}
 		return true;
 	}
 
 	@Override
 	public boolean isModified() {
-		return ds.isModified();
+		boolean modified = false;
+		for (DataSet ds : dataSets.values()) {
+			if (ds.isModified()) {
+				modified = true;
+				break;
+			}
+		}
+		return modified;
 	}
 
 	@Override
 	public void paint(Graphics2D g, MapView mv, Bounds bbox) {
 		if (window == null) {
-			window = new PaintWindow(g, mv);
+			window = new PaintWindow(g, mv, bbox);
 		} else {
 			window.setGraphics2d(g);
 			window.setMapView(mv);
@@ -141,7 +218,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		Graphics2D g;
 		MapView mv;
 
-		public PaintWindow(Graphics2D g, MapView mv) {
+		public PaintWindow(Graphics2D g, MapView mv, Bounds bbox) {
 			this.g = g;
 			this.mv = mv;
 		}
@@ -156,7 +233,14 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 		@Override
 		public void run() {
+			for (GenericInformation type : dataSets.keySet()) {
+				realrun(type);
+			}
+		}
+
+		private void realrun(GenericInformation type) {
 			final ImageSizes size = ImageProvider.ImageSizes.LARGEICON;
+			DataSet ds = dataSets.get(type);
 			for (Node node : ds.getNodes()) {
 				Point p = mv.getPoint(node.getCoor());
 				String error = type.getError(node);
@@ -169,26 +253,27 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		}
 
 		private void createNodeWindow(Graphics2D g, MapView mv, ImageSizes size) {
-			ArrayList<Node> selectedNodes = new ArrayList<>(ds.getSelectedNodes());
-			selectedNodes.sort(null);
-			MapMode mode = MainApplication.getMap().mapMode;
-			if (!selectedNodes.isEmpty() && mode != null && (mode instanceof SelectAction || mode instanceof LassoModeAction)) {
-				if ((selectedNodes.contains(displayedNode) && nodeIndex >= selectedNodes.size())
-						|| !selectedNodes.contains(displayedNode)) {
-					nodeIndex = 0;
+			HashMap<GenericInformation, ArrayList<Node>> selectedErrors = new HashMap<>();
+
+			for (GenericInformation type : dataSets.keySet()) {
+				DataSet ds = dataSets.get(type);
+				ArrayList<Node> selectedNodes = new ArrayList<>(ds.getSelectedNodes());
+				selectedNodes.sort(null);
+				if (!selectedNodes.isEmpty()) {
+					selectedErrors.put(type, selectedNodes);
 				}
-
-				Node selectedNode = selectedNodes.get(nodeIndex);
-
+			}
+			MapMode mode = MainApplication.getMap().mapMode;
+			if (!selectedErrors.isEmpty() && mode != null && (mode instanceof SelectAction || mode instanceof LassoModeAction)) {
 				final int iconHeight = size.getAdjustedHeight();
 				final int iconWidth = size.getAdjustedWidth();
-				paintSelectedNode(g, mv, iconHeight, iconWidth, selectedNode);
+				paintSelectedNode(g, mv, iconHeight, iconWidth, selectedErrors);
 			} else {
-				ds.clearSelection();
-				nodeIndex = 0;
+				for (DataSet ds : dataSets.values()) {
+					ds.clearSelection();
+				}
 				hideNodeWindow();
 			}
-			previousNodes = selectedNodes;
 		}
 
 		/**
@@ -199,12 +284,24 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		 * @param iconWidth The width of the selection box we are drawing
 		 * @param selectedNode The selected node to get information from
 		 */
-		private void paintSelectedNode(Graphics2D g, MapView mv, int iconHeight, int iconWidth, Node selectedNode) {
-			Point p = mv.getPoint(selectedNode.getBBox().getCenter());
+		private void paintSelectedNode(Graphics2D g, MapView mv, int iconHeight, int iconWidth, HashMap<GenericInformation, ArrayList<Node>> selectedErrors) {
+			double averageEast = 0.0;
+			double averageNorth = 0.0;
+			int number = 0;
+			for (GenericInformation type : selectedErrors.keySet()) {
+				for (Node node : selectedErrors.get(type)) {
+					number++;
+					EastNorth ten = node.getEastNorth();
+					averageEast += ten.east();
+					averageNorth += ten.north();
+				}
+			}
+			EastNorth currentClick = new EastNorth(averageEast / number, averageNorth / number);
+			Point p = mv.getPoint(currentClick);
 			g.setColor(ColorHelper.html2color(Config.getPref().get("color.selected")));
 			g.drawRect(p.x - (iconWidth / 2), p.y - (iconHeight / 2), iconWidth - 1, iconHeight - 1);
 
-			if (displayedNode != null && !displayedNode.equals(selectedNode)) {
+			if (!currentClick.equals(lastClick)) {
 				hideNodeWindow();
 			}
 
@@ -213,99 +310,113 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			int yb = p.y - iconHeight - 1;
 			int yt = p.y + (iconHeight / 2) + 2;
 			Point pTooltip;
-
-			String text = type.getNodeToolTip(selectedNode);
-			JPanel actions = type.getActions(selectedNode);
+			displayedPanel = new JPanel();
+			displayedPanel.setLayout(new BoxLayout(displayedPanel, BoxLayout.Y_AXIS));
 
 			if (displayedWindow == null) {
-				HtmlPanel htmlPanel = new HtmlPanel(text);
-				htmlPanel.setBackground(UIManager.getColor("ToolTip.background"));
-				htmlPanel.setForeground(UIManager.getColor("ToolTip.foreground"));
-				htmlPanel.setFont(UIManager.getFont("ToolTip.font"));
-				htmlPanel.setBorder(BorderFactory.createLineBorder(Color.black));
-				htmlPanel.enableClickableHyperlinks();
-				displayedPanel = new JPanel();
-				displayedPanel.add(htmlPanel, GBC.eol());
-				displayedPanel.add(actions, GBC.eol());
-				pTooltip = fixPanelSizeAndLocation(mv, text, xl, xr, yt, yb);
 				displayedWindow = new JWindow(MainApplication.getMainFrame());
 				displayedWindow.setAutoRequestFocus(false);
 				displayedWindow.add(displayedPanel);
 				// Forward mouse wheel scroll event to MapMover
 				displayedWindow.addMouseWheelListener(e -> mv.getMapMover().mouseWheelMoved(
 						(MouseWheelEvent) SwingUtilities.convertMouseEvent(displayedWindow, e, mv)));
-			} else {
-				for (Component component : displayedPanel.getComponents()) {
-					if (component instanceof HtmlPanel) {
-						HtmlPanel htmlPanel = (HtmlPanel) component;
-						htmlPanel.setText(text);
-					} else if (component instanceof JPanel) {
-						component = actions;
+			}
+			for (GenericInformation type : dataSets.keySet()) {
+				for (OsmPrimitive osmPrimitive : dataSets.get(type).getSelected()) {
+					if (!(osmPrimitive instanceof Node)) continue;
+					Node selectedNode = (Node) osmPrimitive;
+					String text = type.getNodeToolTip(selectedNode);
+
+					HtmlPanel htmlPanel = new HtmlPanel(text);
+					htmlPanel.setBackground(UIManager.getColor("ToolTip.background"));
+					htmlPanel.setForeground(UIManager.getColor("ToolTip.foreground"));
+					htmlPanel.setFont(UIManager.getFont("ToolTip.font"));
+					htmlPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+					htmlPanel.enableClickableHyperlinks();
+					JPanel tPanel = new JPanel();
+					tPanel.setLayout(new BoxLayout(tPanel, BoxLayout.Y_AXIS));
+					tPanel.add(htmlPanel);
+
+					List<JButton> actions = type.getActions(selectedNode);
+					JPanel pActions = new JPanel();
+					double minWidth = 0.0;
+					for (JButton action : actions) {
+						pActions.add(action);
+						minWidth += action.getPreferredSize().getWidth();
 					}
+					Dimension d = pActions.getPreferredSize();
+					d.setSize(minWidth, d.getHeight());
+					pActions.setPreferredSize(d);
+					tPanel.add(pActions);
+					displayedPanel.add(tPanel);
 				}
-				pTooltip = fixPanelSizeAndLocation(mv, text, xl, xr, yt, yb);
 			}
 
+			pTooltip = fixPanelSizeAndLocation(mv, displayedPanel, xl, xr, yt, yb);
 			displayedWindow.pack();
 			displayedWindow.setLocation(pTooltip);
 			displayedWindow.setVisible(mv.contains(p));
-			displayedNode = selectedNode;
-
+			lastClick = currentClick;
 		}
 
 		/**
 		 * Get the location of the note panel
 		 * @param mv {@code MapView} that is being drawn on
-		 * @param text The text going into the note panel
+		 * @param panel The JPanel we are drawing
 		 * @param xl The left side of the icon
 		 * @param xr The right side of the icon
 		 * @param yt The top of the icon
 		 * @param yb The bottom of the icon
 		 * @return The point at which we are drawing the note panel
 		 */
-		private Point fixPanelSizeAndLocation(MapView mv, String text, int xl, int xr, int yt, int yb) {
+		private Point fixPanelSizeAndLocation(MapView mv, JPanel panel, int xl, int xr, int yt, int yb) {
 			int leftMaxWidth = (int) (0.95 * xl);
 			int rightMaxWidth = (int) (0.95 * mv.getWidth() - xr);
 			int topMaxHeight = (int) (0.95 * yt);
 			int bottomMaxHeight = (int) (0.95 * mv.getHeight() - yb);
 			int maxWidth = Math.max(leftMaxWidth, rightMaxWidth);
 			int maxHeight = Math.max(topMaxHeight, bottomMaxHeight);
-			HtmlPanel htmlPanel = new HtmlPanel();
-			JPanel actions = new JPanel();
-			for (Component component : displayedPanel.getComponents()) {
-				if (component instanceof HtmlPanel) {
-					htmlPanel = (HtmlPanel) component;
-				} else if (component instanceof JPanel) {
-					actions = (JPanel) component;
+			for (Component sComponent : panel.getComponents()) {
+				if (sComponent instanceof JPanel) {
+					JPanel tPanel = (JPanel) sComponent;
+					for (Component component : tPanel.getComponents()) {
+						if (component instanceof HtmlPanel) {
+							HtmlPanel htmlPanel = (HtmlPanel) component;
+							JEditorPane pane = htmlPanel.getEditorPane();
+							Dimension d = pane.getPreferredSize();
+
+							if ((d.width > maxWidth || d.height > maxHeight) && Config.getPref().getBoolean("note.text.break-on-sentence-mark", true)) {
+								// To make sure long notes are displayed correctly
+								htmlPanel.setText(insertLineBreaks(pane.getText()));
+							}
+							// If still too large, enforce maximum size
+							d = pane.getPreferredSize();
+
+							if (d.width > maxWidth || d.height > maxHeight) {
+								View v = (View) pane.getClientProperty(BasicHTML.propertyKey);
+								if (v == null) {
+									BasicHTML.updateRenderer(pane, pane.getText());
+									v = (View) pane.getClientProperty(BasicHTML.propertyKey);
+								}
+								if (v != null) {
+									v.setSize(maxWidth, 0);
+									int w = (int) Math.ceil(v.getPreferredSpan(View.X_AXIS));
+									int h = (int) Math.ceil(v.getPreferredSpan(View.Y_AXIS)) + 10;
+									pane.setPreferredSize(new Dimension(w, h));
+								}
+							}
+							//htmlPanel.setPreferredSize(pane.getPreferredSize());
+							Dimension daction = htmlPanel.getPreferredSize();
+							d = pane.getPreferredSize();
+							d.setSize(Math.max(d.getWidth(), daction.getWidth()), Math.max(d.getHeight(), daction.getHeight()));
+							pane.setPreferredSize(d);
+						}
+					}
 				}
 			}
-			JEditorPane pane = htmlPanel.getEditorPane();
-			Dimension d = pane.getPreferredSize();
-			Dimension daction = actions.getPreferredSize();
-			if ((d.width > maxWidth || d.height > maxHeight) && Config.getPref().getBoolean("note.text.break-on-sentence-mark", false)) {
-				// To make sure long notes are displayed correctly
-				htmlPanel.setText(insertLineBreaks(text));
-			}
-			// If still too large, enforce maximum size
-			d = pane.getPreferredSize();
-			if (d.width > maxWidth || d.height > maxHeight) {
-				View v = (View) pane.getClientProperty(BasicHTML.propertyKey);
-				if (v == null) {
-					BasicHTML.updateRenderer(pane, text);
-					v = (View) pane.getClientProperty(BasicHTML.propertyKey);
-				}
-				if (v != null) {
-					v.setSize(maxWidth, 0);
-					int w = (int) Math.ceil(v.getPreferredSpan(View.X_AXIS));
-					int h = (int) Math.ceil(v.getPreferredSpan(View.Y_AXIS)) + 10;
-					pane.setPreferredSize(new Dimension(w, h));
-				}
-			}
-			d = pane.getPreferredSize();
+			Dimension d = panel.getPreferredSize();
 			// place tooltip on left or right side of icon, based on its width
 			Point screenloc = mv.getLocationOnScreen();
-			d.setSize(Math.max(d.getWidth(), daction.getWidth()), d.getHeight() + daction.getHeight());
-			displayedPanel.setPreferredSize(d);
 			return new Point(
 					screenloc.x + (d.width > rightMaxWidth && d.width <= leftMaxWidth ? xl - d.width : xr),
 					screenloc.y + (d.height > bottomMaxHeight && d.height <= topMaxHeight ? yt - d.height - 10 : yb));
@@ -333,35 +444,65 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		if (!SwingUtilities.isLeftMouseButton(e)) {
 			return;
 		}
-
-		ArrayList<Node> closestNode = getClosestNode(e.getPoint(), 10);
-		if (!closestNode.isEmpty()) {
-			ds.setSelected(closestNode);
-		} else {
-			ds.clearSelection();
-		}
-		if (!closestNode.contains(displayedNode)) {
-			hideNodeWindow();
-		}
-		invalidate();
-		nodeIndex++;
+		new GetClosestNode(e).run();
 	}
 
-	/**
-	 * Get the closest nodes to a point
-	 * @param mousePoint The current location of the mouse
-	 * @param snapDistance The maximum distance to find the closest node
-	 * @return The closest {@code Node}s
-	 */
-	private ArrayList<Node> getClosestNode(Point mousePoint, double snapDistance) {
-		ArrayList<Node> closestNode = new ArrayList<>();
-		for (Node node : ds.getNodes()) {
-			Point notePoint = MainApplication.getMap().mapView.getPoint(node.getBBox().getCenter());
-			if (mousePoint.distance(notePoint) < snapDistance) {
-				closestNode.add(node);
-			}
+	private class GetClosestNode implements Runnable {
+		MouseEvent e;
+		GetClosestNode(MouseEvent e) {
+			this.e = e;
 		}
-		return closestNode;
+		/**
+		 * Get the closest nodes to a point
+		 * @param mousePoint The current location of the mouse
+		 * @param snapDistance The maximum distance to find the closest node
+		 * @return The closest {@code Node}s
+		 */
+		private HashMap<GenericInformation, ArrayList<Node>> getClosestNode(Point mousePoint, double snapDistance) {
+			HashMap<GenericInformation, ArrayList<Node>> closestNodes = new HashMap<>();
+			for (GenericInformation type : dataSets.keySet()) {
+				DataSet ds = dataSets.get(type);
+				ArrayList<Node> closestNode = new ArrayList<>();
+				for (Node node : ds.getNodes()) {
+					Point notePoint = MainApplication.getMap().mapView.getPoint(node.getBBox().getCenter());
+					if (mousePoint.distance(notePoint) < snapDistance) {
+						closestNode.add(node);
+					}
+				}
+				if (!closestNode.isEmpty()) {
+					closestNodes.put(type, closestNode);
+				}
+			}
+			return closestNodes;
+		}
+
+		@Override
+		public void run() {
+			HashMap<GenericInformation, ArrayList<Node>> closestNode = getClosestNode(e.getPoint(), 10);
+			if (!closestNode.isEmpty()) {
+				for (GenericInformation type : closestNode.keySet()) {
+					dataSets.get(type).setSelected(closestNode.get(type));
+				}
+			}
+			for (GenericInformation type : dataSets.keySet()) {
+				if (!closestNode.containsKey(type)) {
+					dataSets.get(type).clearSelection();
+				}
+			}
+			boolean gotNode = false;
+			if (displayedNode != null) {
+				for (DataSet ds : dataSets.values()) {
+					if (ds.containsNode(displayedNode)) {
+						gotNode = true;
+						break;
+					}
+				}
+			}
+			if (!gotNode) {
+				hideNodeWindow();
+			}
+			invalidate();
+		}
 	}
 
 	@Override
@@ -391,15 +532,31 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	@Override
 	public String getToolTipText() {
-		int size = ds.getNodes().size();
-		return trn("{0} keepright note", "{0} keepright notes", size, size);
+		int size = 0;
+		for (DataSet ds : dataSets.values()) {
+			size += ds.getNodes().size();
+		}
+		return trn("{0} {1} note", "{0} {1} notes", size, size, OpenQA.NAME);
 	}
 
 	@Override
 	public void mergeFrom(Layer from) {
 		if (from instanceof ErrorLayer) {
 			ErrorLayer efrom = (ErrorLayer) from;
-			ds.mergeFrom(efrom.ds);
+			for (GenericInformation type : efrom.dataSets.keySet()) {
+				boolean merged = false;
+				for (GenericInformation current : dataSets.keySet()) {
+					if (type.getClass().equals(current.getClass())) {
+						DataSet ds = efrom.dataSets.get(type);
+						dataSets.get(current).mergeFrom(ds);
+						merged = true;
+						break;
+					}
+				}
+				if (!merged) {
+					dataSets.put(type, efrom.dataSets.get(type));
+				}
+			}
 		}
 	}
 
@@ -410,25 +567,34 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	@Override
 	public void visitBoundingBox(BoundingXYVisitor v) {
-		for (OsmPrimitive osm : ds.allPrimitives()) {
-			v.visit(osm.getBBox().getCenter());
+		for (DataSet ds : dataSets.values()) {
+			for (OsmPrimitive osm : ds.allPrimitives()) {
+				v.visit(osm.getBBox().getCenter());
+			}
 		}
 
 	}
 
 	@Override
 	public Object getInfoComponent() {
+		int size = 0;
+		for (DataSet ds : dataSets.values()) {
+			size += ds.allPrimitives().size();
+		}
 		StringBuilder sb = new StringBuilder();
 		sb.append(tr("Keep Right Layer"))
 		.append('\n').append(tr("Total notes")).append(' ')
-		.append(ds.allPrimitives().size());
+		.append(size);
 		return sb;
 	}
 
 	@Override
 	public void selectionChanged(SelectionChangeEvent event) {
 		Set<OsmPrimitive> selected = event.getAdded();
-		ds.setSelected(selected);
+		if (event.getAdded().iterator().hasNext()) {
+			DataSet ds = event.getAdded().iterator().next().getDataSet();
+			ds.setSelected(selected);
+		}
 		invalidate();
 	}
 
@@ -456,9 +622,13 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	public void highlightUpdated(HighlightUpdateEvent e) {
 		for (OsmPrimitive osmPrimitive : e.getDataSet().allPrimitives()) {
 			if (osmPrimitive instanceof Node && (osmPrimitive.hasKey("actionTaken") || "false".equals(osmPrimitive.get("actionTaken")))) {
-				type.getNodeToolTip((Node) osmPrimitive);
-				if (!osmPrimitive.hasKey("actionTaken")) {
-					osmPrimitive.put("actionTaken", "true");
+				Node node = (Node) osmPrimitive;
+				for (GenericInformation type : dataSets.keySet()) {
+					if (!dataSets.get(type).containsNode(node)) continue;
+					type.getNodeToolTip(node);
+					if (!osmPrimitive.hasKey("actionTaken")) {
+						osmPrimitive.put("actionTaken", "true");
+					}
 				}
 			}
 		}

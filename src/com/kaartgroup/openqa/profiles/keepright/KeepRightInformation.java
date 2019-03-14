@@ -15,29 +15,20 @@ import java.util.TreeMap;
 import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JPanel;
 
 import org.openstreetmap.josm.data.Bounds;
-import org.openstreetmap.josm.data.gpx.GpxData;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.gui.layer.GpxLayer;
-import org.openstreetmap.josm.gui.layer.Layer;
-import org.openstreetmap.josm.gui.layer.markerlayer.MarkerLayer;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
-import org.openstreetmap.josm.io.GpxReader;
 import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.openstreetmap.josm.tools.Logging;
-import org.xml.sax.SAXException;
 
 import com.kaartgroup.openqa.CachedFile;
-import com.kaartgroup.openqa.ErrorLayer;
 import com.kaartgroup.openqa.GeoJsonReader;
-import com.kaartgroup.openqa.OpenQA;
 import com.kaartgroup.openqa.profiles.GenericInformation;
 
 /**
@@ -150,10 +141,8 @@ public class KeepRightInformation extends GenericInformation {
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
 
-	private String CACHE_DIR;
-
 	public KeepRightInformation(String CACHE_DIR) {
-		this.CACHE_DIR = CACHE_DIR;
+		super(CACHE_DIR);
 	}
 
 	private CachedFile getFile(String type, Bounds bound) {
@@ -175,40 +164,22 @@ public class KeepRightInformation extends GenericInformation {
 		return cache;
 	}
 
-	private GpxData getGpxErrors(Bounds bound) {
-		CachedFile cache = getFile("gpx", bound);
-		try {
-			GpxReader reader = new GpxReader(cache.getInputStream());
-			reader.parse(true);
-			cache.close();
-			return reader.getGpxData();
-		} catch (IOException e) {
-			Logging.debug(e.getMessage());
-		} catch (SAXException e) {
-			Logging.debug(e.getMessage());
-		}
-		cache.close();
-		return null;
-	}
-
-	private Layer getGeoJsonErrors(Bounds bound) {
+	private DataSet getGeoJsonErrors(Bounds bound) {
 		CachedFile cache = getFile("geojson", bound);
-		ErrorLayer layer = new ErrorLayer(this);
+		DataSet ds = new DataSet();
 		try {
-			DataSet ds = GeoJsonReader.parseDataSet(cache.getInputStream(), null);
-			layer.addNotes(ds);
+			ds = GeoJsonReader.parseDataSet(cache.getInputStream(), null);
 		} catch (IllegalDataException | IOException e) {
 			Logging.debug(e.getMessage());
 			e.printStackTrace();
 		}
-		return layer;
+		return ds;
 	}
 
 	@Override
-	public Layer getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
+	public DataSet getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
 		monitor.subTask(tr("Getting {0} errors", "KeepRight"));
-		String type = Config.getPref().get(OpenQA.PREF_FILETYPE);
-		Layer mlayer = null;
+		DataSet returnDataSet = null;
 		String windowTitle = tr("Updating {0} information", "KeepRight");
 		if (bounds.size() > 10) {
 			monitor.subTask(windowTitle);
@@ -217,37 +188,19 @@ public class KeepRightInformation extends GenericInformation {
 		} else {
 			monitor.indeterminateSubTask(windowTitle);
 		}
-		if (type.equals("geojson")) {
-			for (Bounds bound : bounds) {
-				if (monitor.isCanceled()) break;
-				monitor.worked(1);
-				Layer layer = getGeoJsonErrors(bound);
-				if (layer != null) {
-					if (mlayer == null) {
-						mlayer = layer;
-					} else {
-						mlayer.mergeFrom(layer);
-					}
-				}
-			}
-		} else {
-			// Default to GPX
-			for (Bounds bound : bounds) {
-				if (monitor.isCanceled()) break;
-				monitor.worked(1);
-				GpxData gpxData = getGpxErrors(bound);
-				if (gpxData != null) {
-					GpxLayer layer = new GpxLayer(gpxData);
-					MarkerLayer tlayer = new MarkerLayer(gpxData, LAYER_NAME, layer.getAssociatedFile(), layer);
-					if (mlayer == null) {
-						mlayer = tlayer;
-					} else {
-						mlayer.mergeFrom(tlayer);
-					}
+		for (Bounds bound : bounds) {
+			if (monitor.isCanceled()) break;
+			monitor.worked(1);
+			DataSet ds = getGeoJsonErrors(bound);
+			if (ds != null) {
+				if (returnDataSet == null) {
+					returnDataSet = ds;
+				} else {
+					returnDataSet.mergeFrom(ds);
 				}
 			}
 		}
-		return mlayer;
+		return returnDataSet;
 	}
 
 	@Override
@@ -304,7 +257,7 @@ public class KeepRightInformation extends GenericInformation {
 		sb.append("<hr/>");
 		sb.append(node.get("description"));
 		sb.append("<hr/>");
-		sb.append(getUserName(Long.parseLong(node.get("object_id"))));
+		sb.append("Last edited by ".concat(getUserName(Long.parseLong(node.get("object_id")))));
 		String commentText = node.get("comment");
 		if (commentText != null && !commentText.trim().isEmpty()) {
 			sb.append("<hr/>");
@@ -321,8 +274,7 @@ public class KeepRightInformation extends GenericInformation {
 	}
 
 	@Override
-	public JPanel getActions(Node node) {
-		JPanel jPanel = new JPanel();
+	public List<JButton> getActions(Node node) {
 		JButton fixed = new JButton();
 		JButton falsePositive = new JButton();
 
@@ -356,8 +308,6 @@ public class KeepRightInformation extends GenericInformation {
 
 		fixed.setText(tr("Fixed"));
 		falsePositive.setText(tr("False Positive"));
-		jPanel.add(fixed);
-		jPanel.add(falsePositive);
 		if (node.hasKey("actionTaken")) {
 			if ("true".equals(node.get("actionTaken"))) {
 				fixed.setEnabled(false);
@@ -367,7 +317,11 @@ public class KeepRightInformation extends GenericInformation {
 				falsePositive.setEnabled(false);
 			}
 		}
-		return jPanel;
+
+		ArrayList<JButton> buttons = new ArrayList<>();
+		buttons.add(fixed);
+		buttons.add(falsePositive);
+		return buttons;
 	}
 
 	@Override

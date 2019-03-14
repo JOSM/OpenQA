@@ -3,13 +3,14 @@
  */
 package com.kaartgroup.openqa.profiles;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 
 import javax.swing.ImageIcon;
-import javax.swing.JPanel;
+import javax.swing.JButton;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.BBox;
@@ -19,7 +20,6 @@ import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.Relation;
 import org.openstreetmap.josm.data.osm.User;
 import org.openstreetmap.josm.gui.MainApplication;
-import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.XmlWriter;
@@ -54,6 +54,11 @@ public abstract class GenericInformation {
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
 
+	protected String CACHE_DIR;
+	public GenericInformation(String CACHE_DIR) {
+		this.CACHE_DIR = CACHE_DIR;
+	}
+
 	/**
 	 * Cache a file for 24 hours
 	 * @param url The URL to cache
@@ -83,9 +88,9 @@ public abstract class GenericInformation {
 	 * Get the errors for a layer
 	 * @param dataSet {@code DataSet} to get errors for
 	 * @param progressMonitor The {@code ProgressMonitor} with which to monitor progress
-	 * @return A new {@code Layer} that has error information for the {@code bounds}
+	 * @return A new {@code DataSet} that has error information for the {@code bounds}
 	 */
-	public Layer getErrors(DataSet dataSet, ProgressMonitor progressMonitor) {
+	public DataSet getErrors(DataSet dataSet, ProgressMonitor progressMonitor) {
 		List<Bounds> bounds = dataSet.getDataSourceBounds();
 		if (bounds.isEmpty()) {
 			bounds = new ArrayList<>();
@@ -101,7 +106,7 @@ public abstract class GenericInformation {
 	 * @param progressMonitor The {@code ProgressMonitor} with which to monitor progress
 	 * @return A new {@code Layer} that has error information for the {@code bounds}
 	 */
-	public abstract Layer getErrors(List<Bounds> bounds, ProgressMonitor progressMonitor);
+	public abstract DataSet getErrors(List<Bounds> bounds, ProgressMonitor progressMonitor);
 
 	/**
 	 * Get the bounds for a dataSet
@@ -203,9 +208,9 @@ public abstract class GenericInformation {
 	/**
 	 * Get the possible actions for a error node
 	 * @param selectedNode {@code Node} that has error information
-	 * @return A {@code JPanel} set of actions to add to a dialog
+	 * @return A list of {@code JButton}s with associated actions to add to a dialog
 	 */
-	public abstract JPanel getActions(Node selectedNode);
+	public abstract List<JButton> getActions(Node selectedNode);
 
 	/**
 	 * Redraw error layers
@@ -230,7 +235,8 @@ public abstract class GenericInformation {
 		@Override
 		public void run() {
 			try (CachedFile cache = new CachedFile(url)) {
-				cache.setDestDir(CACHE_DIR);
+				File dir = new File(CACHE_DIR, DATA_SUB_DIR);
+				cache.setDestDir(dir.getPath());
 				cache.getFile();
 				cache.close();
 				cache.clear();

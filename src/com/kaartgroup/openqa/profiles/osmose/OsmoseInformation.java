@@ -23,21 +23,18 @@ import javax.json.stream.JsonParser.Event;
 import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JPanel;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
-import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
+import org.openstreetmap.josm.tools.Logging;
 
 import com.kaartgroup.openqa.CachedFile;
-import com.kaartgroup.openqa.ErrorLayer;
 import com.kaartgroup.openqa.profiles.GenericInformation;
 
 /**
@@ -55,16 +52,15 @@ public class OsmoseInformation extends GenericInformation {
 	public static TreeMap<String, String> formats = new TreeMap<>();
 
 	public OsmoseInformation(String CACHE_DIR) {
-		this.CACHE_DIR = CACHE_DIR;
+		super(CACHE_DIR);
 	}
 
-	private Layer getGeoJsonErrors(Bounds bound) {
+	private DataSet getGeoJsonErrors(Bounds bound) {
 		CachedFile cache = getFile(bound);
-		ErrorLayer layer = new ErrorLayer(this);
+		DataSet ds = new DataSet();
 		try {
 			JsonParser json = Json.createParser(cache.getInputStream());
 			ArrayList<String> fields = new ArrayList<>();
-			DataSet ds = new DataSet();
 			while (json.hasNext()) {
 				if (json.next() == Event.START_OBJECT) {
 					JsonObject jobject = json.getObject();
@@ -101,13 +97,12 @@ public class OsmoseInformation extends GenericInformation {
 					}
 				}
 			}
-			layer.addNotes(ds);
 		} catch (IOException e) {
 			Logging.debug(e.getMessage());
 			e.printStackTrace();
 		}
 		cache.close();
-		return layer;
+		return ds;
 	}
 
 	private CachedFile getFile(Bounds bound) {
@@ -131,9 +126,9 @@ public class OsmoseInformation extends GenericInformation {
 	}
 
 	@Override
-	public Layer getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
+	public DataSet getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
 		monitor.subTask(tr("Getting {0} errors", "Osmose"));
-		Layer mlayer = null;
+		DataSet returnDataSet = null;
 		String windowTitle = tr("Updating {0} information", "Osmose");
 		if (bounds.size() > 10) {
 			monitor.subTask(windowTitle);
@@ -145,16 +140,16 @@ public class OsmoseInformation extends GenericInformation {
 		for (Bounds bound : bounds) {
 			if (monitor.isCanceled()) break;
 			monitor.worked(1);
-			Layer layer = getGeoJsonErrors(bound);
-			if (layer != null) {
-				if (mlayer == null) {
-					mlayer = layer;
+			DataSet ds = getGeoJsonErrors(bound);
+			if (ds != null) {
+				if (returnDataSet == null) {
+					returnDataSet = ds;
 				} else {
-					mlayer.mergeFrom(layer);
+					returnDataSet.mergeFrom(ds);
 				}
 			}
 		}
-		return mlayer;
+		return returnDataSet;
 	}
 
 	@Override
@@ -317,43 +312,49 @@ public class OsmoseInformation extends GenericInformation {
 		  .append("</a>");
 
 		sb.append("<hr/>");
-		sb.append(node.get("subtitle"));
-		sb.append("<hr/>");
+		String subtitle = node.get("subtitle");
+		if (subtitle != null && !subtitle.isBlank()) {
+			sb.append(node.get("subtitle"));
+			sb.append("<hr/>");
+		}
 		String elements = node.get("elems");
-		if (elements != null && !elements.trim().isEmpty()) {
-			String htmlText = "Elements: ";
+		if (elements != null && !elements.isBlank()) {
+			String startText = "Elements: ";
+			String htmlText = "".concat(startText);
 			String[] element = elements.split("_");
 			for (int i = 0; i < element.length; i++) {
 				String pOsm = element[i];
 				if (pOsm.startsWith("node")) {
-					htmlText += "node " + pOsm.replace("node", "");
+					htmlText.concat("node ").concat(pOsm.replace("node", ""));
 				} else if (pOsm.startsWith("way")) {
-					htmlText += "way " + pOsm.replace("way", "");
+					htmlText.concat("way ").concat(pOsm.replace("way", ""));
 				} else if (pOsm.startsWith("relation")) {
-					htmlText += "relation " + pOsm.replace("relation", "");
+					htmlText.concat("relation ").concat(pOsm.replace("relation", ""));
 				}
 
 				if (i < element.length - 2) {
-					htmlText += ", ";
+					htmlText.concat(", ");
 				} else if (i == element.length - 2) {
-					htmlText += " and ";
+					htmlText.concat(" and ");
 				}
 			}
-			sb.append(htmlText);
-			sb.append("<hr/>");
+			if (!startText.equals(htmlText)) {
+				sb.append(htmlText);
+				sb.append("<hr/>");
+			}
 		}
 
 		String suggestions = node.get("new_elems");
 		if (suggestions != null && !suggestions.trim().isEmpty() && !suggestions.equals("[]") ) {
 			String htmlText = "Possible additions: ";
-			htmlText += suggestions; // TODO check if we can parse this with JSON
+			htmlText.concat(suggestions); // TODO check if we can parse this with JSON
 			sb.append(htmlText);
 			sb.append("<hr/>");
 		}
 
-		sb.append("Last updated on " + node.get("update"));
+		sb.append("Last updated on ".concat(node.get("update")));
 
-		sb.append("<br/> by " + getUserName(node.get("username")));
+		sb.append("<br/> by ".concat(getUserName(node.get("username"))));
 		sb.append("</html>");
 		String result = sb.toString();
 		Logging.debug(result);
@@ -361,10 +362,9 @@ public class OsmoseInformation extends GenericInformation {
 	}
 
 	@Override
-	public JPanel getActions(Node node) {
+	public List<JButton> getActions(Node node) {
 		final String apiUrl = baseApi + "error/" + node.get("error_id") + "/";
 
-		JPanel jPanel = new JPanel();
 		JButton fixed = new JButton();
 		JButton falsePositive = new JButton();
 		fixed.setAction(new AbstractAction() {
@@ -397,8 +397,6 @@ public class OsmoseInformation extends GenericInformation {
 
 		fixed.setText(tr("Fixed"));
 		falsePositive.setText(tr("False Positive"));
-		jPanel.add(fixed);
-		jPanel.add(falsePositive);
 		if (node.hasKey("actionTaken")) {
 			if ("true".equals(node.get("actionTaken"))) {
 				fixed.setEnabled(false);
@@ -408,7 +406,11 @@ public class OsmoseInformation extends GenericInformation {
 				falsePositive.setEnabled(false);
 			}
 		}
-		return jPanel;
+
+		ArrayList<JButton> buttons = new ArrayList<>();
+		buttons.add(fixed);
+		buttons.add(falsePositive);
+		return buttons;
 	}
 
 	@Override

@@ -25,7 +25,6 @@ import org.openstreetmap.josm.io.OsmTransferException;
 import org.openstreetmap.josm.tools.Logging;
 import org.xml.sax.SAXException;
 
-import com.kaartgroup.openqa.profiles.GenericInformation;
 import com.kaartgroup.openqa.profiles.keepright.KeepRightInformation;
 import com.kaartgroup.openqa.profiles.osmose.OsmoseInformation;
 
@@ -89,22 +88,19 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 		ArrayList<Layer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayers());
 		for (Layer layer : layers) {
 			if (layer instanceof ErrorLayer) {
-				MainApplication.getLayerManager().removeLayer(layer);
+				//MainApplication.getLayerManager().removeLayer(layer);
 			}
 		}
-		UpdateLayersTask osmose = new UpdateLayersTask(new OsmoseInformation(CACHE_DIR), new PleaseWaitProgressMonitor());
-		UpdateLayersTask keepright = new UpdateLayersTask(new KeepRightInformation(CACHE_DIR), new PleaseWaitProgressMonitor());
-		MainApplication.worker.submit(osmose);
-		MainApplication.worker.submit(keepright);
+		MainApplication.worker.submit(new UpdateLayersTask(CACHE_DIR, new PleaseWaitProgressMonitor()));
 	}
 
 	private static class UpdateLayersTask extends PleaseWaitRunnable {
 		private boolean isCanceled;
-		GenericInformation type;
+		String CACHE_DIR;
 
-		public UpdateLayersTask(GenericInformation type, PleaseWaitProgressMonitor monitor) {
+		public UpdateLayersTask(String CACHE_DIR, PleaseWaitProgressMonitor monitor) {
 			this(tr("Update {0} Layers", OpenQA.NAME), monitor, true);
-			this.type = type;
+			this.CACHE_DIR = CACHE_DIR;
 		}
 		public UpdateLayersTask(String title, ProgressMonitor progressMonitor, boolean ignoreException) {
 			super(title, progressMonitor, ignoreException);
@@ -117,42 +113,23 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 
 		@Override
 		protected void realRun() throws SAXException, IOException, OsmTransferException {
-			List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
-			Layer toAdd = null;
-			for (OsmDataLayer layer : osmDataLayers) {
-				if (isCanceled) break;
-				getProgressMonitor().indeterminateSubTask(tr("Updating layers"));
-				Layer tlayer = type.getErrors(layer.getDataSet(), getProgressMonitor());
-				if (toAdd != null) {
-					toAdd.mergeFrom(tlayer);
-				} else {
-					toAdd = tlayer;
-				}
-			}
-			if (toAdd != null) {
-				MainApplication.getLayerManager().addLayer(toAdd, false);
-			}
-
+			if (isCanceled) return;
 			List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
-			for (int i = 0; i < errorLayers.size(); i++) {
-				ErrorLayer layer = errorLayers.get(i);
-				if (layer == null || !MainApplication.getLayerManager().containsLayer(layer)) continue;
-				String name = layer.getName();
-				for (int j = i + 1; j < errorLayers.size(); j++) {
-					ErrorLayer jLayer = errorLayers.get(j);
-					if (jLayer == null || !MainApplication.getLayerManager().containsLayer(jLayer)) continue;
-					String nextName = jLayer.getName();
-					if (name.equals(nextName)) {
-						layer.mergeFrom(jLayer);
-						MainApplication.getLayerManager().removeLayer(jLayer);
-					}
-				}
+			ErrorLayer toAdd = null;
+			if (errorLayers.isEmpty()) {
+				toAdd = new ErrorLayer(CACHE_DIR);
+				toAdd.setErrorClasses(KeepRightInformation.class, OsmoseInformation.class);
+				MainApplication.getLayerManager().addLayer(toAdd);
+			} else {
+				toAdd = errorLayers.get(0);
 			}
+			toAdd.update();
 		}
 
 		@Override
 		protected void finish() {
-			// Do nothing
+			// TODO Auto-generated method stub
+
 		}
 	}
 
