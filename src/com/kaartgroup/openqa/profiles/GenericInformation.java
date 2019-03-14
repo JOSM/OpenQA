@@ -223,19 +223,19 @@ public abstract class GenericInformation {
 		}
 	}
 
-	protected class SendInformation implements Runnable {
+	protected static class SendInformation implements Runnable {
 		final String url;
-		final String CACHE_DIR;
+		final String directory;
 
 		public SendInformation(String url, String CACHE_DIR) {
 			this.url = url;
-			this.CACHE_DIR = CACHE_DIR;
+			directory = CACHE_DIR;
 		}
 
 		@Override
 		public void run() {
 			try (CachedFile cache = new CachedFile(url)) {
-				File dir = new File(CACHE_DIR, DATA_SUB_DIR);
+				File dir = new File(directory, DATA_SUB_DIR);
 				cache.setDestDir(dir.getPath());
 				cache.getFile();
 				cache.close();

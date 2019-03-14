@@ -46,8 +46,6 @@ public class OsmoseInformation extends GenericInformation {
 	public static String baseApi = "http://osmose.openstreetmap.fr/api/0.2/";
 	public static String baseImg = "http://osmose.openstreetmap.fr/en/images/markers/marker-b-%s.png";
 	public static String baseErrorUrl = "http://osmose.openstreetmap.fr/en/error/";
-	private String CACHE_DIR;
-
 
 	public static TreeMap<String, String> formats = new TreeMap<>();
 
@@ -108,11 +106,11 @@ public class OsmoseInformation extends GenericInformation {
 	private CachedFile getFile(Bounds bound) {
 		String type = "json";
 		String enabled = buildDownloadErrorList();
-		String url = baseApi + "errors?full=true" + "&item=" + enabled;
-		url += "&bbox=" + Double.toString(bound.getMinLon());
-		url += "," + Double.toString(bound.getMinLat());
-		url += "," + Double.toString(bound.getMaxLon());
-		url += "," + Double.toString(bound.getMaxLat());
+		String url = baseApi.concat("errors?full=true").concat("&item=").concat(enabled);
+		url = url.concat("&bbox=").concat(Double.toString(bound.getMinLon()));
+		url = url.concat(",").concat(Double.toString(bound.getMinLat()));
+		url = url.concat(",").concat(Double.toString(bound.getMaxLon()));
+		url = url.concat(",").concat(Double.toString(bound.getMaxLat()));
 		CachedFile cache;
 		try {
 			cache = GenericInformation.getFile(url, formats.get(type), new File(CACHE_DIR, DATA_SUB_DIR).getCanonicalPath());
@@ -325,17 +323,17 @@ public class OsmoseInformation extends GenericInformation {
 			for (int i = 0; i < element.length; i++) {
 				String pOsm = element[i];
 				if (pOsm.startsWith("node")) {
-					htmlText.concat("node ").concat(pOsm.replace("node", ""));
+					htmlText = htmlText.concat("node ").concat(pOsm.replace("node", ""));
 				} else if (pOsm.startsWith("way")) {
-					htmlText.concat("way ").concat(pOsm.replace("way", ""));
+					htmlText = htmlText.concat("way ").concat(pOsm.replace("way", ""));
 				} else if (pOsm.startsWith("relation")) {
-					htmlText.concat("relation ").concat(pOsm.replace("relation", ""));
+					htmlText = htmlText.concat("relation ").concat(pOsm.replace("relation", ""));
 				}
 
 				if (i < element.length - 2) {
-					htmlText.concat(", ");
+					htmlText = htmlText.concat(", ");
 				} else if (i == element.length - 2) {
-					htmlText.concat(" and ");
+					htmlText = htmlText.concat(" and ");
 				}
 			}
 			if (!startText.equals(htmlText)) {
@@ -347,7 +345,7 @@ public class OsmoseInformation extends GenericInformation {
 		String suggestions = node.get("new_elems");
 		if (suggestions != null && !suggestions.trim().isEmpty() && !suggestions.equals("[]") ) {
 			String htmlText = "Possible additions: ";
-			htmlText.concat(suggestions); // TODO check if we can parse this with JSON
+			htmlText = htmlText.concat(suggestions); // TODO check if we can parse this with JSON
 			sb.append(htmlText);
 			sb.append("<hr/>");
 		}
