@@ -38,7 +38,7 @@ import com.kaart.openqa.OpenQA;
  *
  */
 public abstract class GenericInformation {
-	/** The API URL, usually something like {@link https://www.example.org/api/0.2} */
+	/** The API URL, usually something like https://www.example.org/api/0.2 */
 	public static String baseApi;
 	/** The base URL for images */
 	public static String baseImg;

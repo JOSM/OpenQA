@@ -29,8 +29,10 @@ import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JWindow;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -88,7 +90,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	HashMap<GenericInformation, Boolean> enabledSources = new HashMap<>();
 
 	private Node displayedNode;
-	private JPanel displayedPanel;
+	private JScrollPane displayedPanel;
 	private JWindow displayedWindow;
 	private PaintWindow window;
 
@@ -101,7 +103,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	/**
 	 * Create a new ErrorLayer using a class that extends {@code GenericInformation}
-	 * @param type A class that extends {@code GenericInformation}
+	 * @param CACHE_DIR The directory where cache files are stored
 	 */
 	public ErrorLayer(String CACHE_DIR) {
 		super(tr("{0} Layers", OpenQA.NAME));
@@ -185,6 +187,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	/**
 	 * Add notes from a {@code DataSet}
+	 * @param type {@code GenericInformation} subclass to add notes for
 	 * @param newDataSet {@code DataSet} with notes
 	 * @return true if added
 	 */
@@ -290,7 +293,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		 * @param mv The {@code MapView} object that we are drawing on
 		 * @param iconHeight The height of the selection box that we are drawing
 		 * @param iconWidth The width of the selection box we are drawing
-		 * @param selectedNode The selected node to get information from
+		 * @param selectedErrors The errors that have been selected from which to get information from
 		 */
 		private void paintSelectedNode(Graphics2D g, MapView mv, int iconHeight, int iconWidth, HashMap<GenericInformation, ArrayList<Node>> selectedErrors) {
 			double averageEast = 0.0;
@@ -318,8 +321,10 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			int yb = p.y - iconHeight - 1;
 			int yt = p.y + (iconHeight / 2) + 2;
 			Point pTooltip;
-			displayedPanel = new JPanel();
-			displayedPanel.setLayout(new BoxLayout(displayedPanel, BoxLayout.Y_AXIS));
+			JPanel interiorPanel = new JPanel();
+			displayedPanel = new JScrollPane(interiorPanel);
+			displayedPanel.getVerticalScrollBar().setUnitIncrement(30);
+			interiorPanel.setLayout(new BoxLayout(interiorPanel, BoxLayout.Y_AXIS));
 
 			if (displayedWindow == null) {
 				displayedWindow = new JWindow(MainApplication.getMainFrame());
@@ -356,14 +361,26 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 					d.setSize(minWidth, d.getHeight());
 					pActions.setPreferredSize(d);
 					tPanel.add(pActions);
-					displayedPanel.add(tPanel);
+					interiorPanel.add(tPanel);
 				}
 			}
 
-			pTooltip = fixPanelSizeAndLocation(mv, displayedPanel, xl, xr, yt, yb);
+			pTooltip = fixPanelSizeAndLocation(mv, interiorPanel, xl, xr, yt, yb);
+
+			Dimension d = displayedPanel.getPreferredSize();
+			d.setSize(d.getWidth(), Math.min(d.getHeight(), 450));
+
+			int topMaxHeight = (int) (0.95 * yt);
+			int bottomMaxHeight = (int) (0.95 * mv.getHeight() - yb);
+			int maxHeight = Math.max(topMaxHeight, bottomMaxHeight);
+			d.setSize(d.getWidth() + 20,
+					Math.min(d.getHeight(), maxHeight));
+			displayedPanel.setPreferredSize(d);
+
 			displayedWindow.pack();
 			displayedWindow.setLocation(pTooltip);
 			displayedWindow.setVisible(mv.contains(p));
+			if (!mv.contains(p)) hideNodeWindow();
 			lastClick = currentClick;
 		}
 
@@ -377,7 +394,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		 * @param yb The bottom of the icon
 		 * @return The point at which we are drawing the note panel
 		 */
-		private Point fixPanelSizeAndLocation(MapView mv, JPanel panel, int xl, int xr, int yt, int yb) {
+		private Point fixPanelSizeAndLocation(MapView mv, JComponent panel, int xl, int xr, int yt, int yb) {
 			int leftMaxWidth = (int) (0.95 * xl);
 			int rightMaxWidth = (int) (0.95 * mv.getWidth() - xr);
 			int topMaxHeight = (int) (0.95 * yt);

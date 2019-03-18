@@ -593,7 +593,8 @@ public class CachedFile implements Closeable {
     }
 
     /**
-     * Should the file be deleted on exit?
+     * Should the file be deleted on exit? Must be called before download.
+     * @param delete true if we want to delete on exit.
      */
     public void setDeleteOnExit(boolean delete) {
         deleteOnExit = delete;
