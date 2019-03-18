@@ -320,12 +320,12 @@ public class OsmoseInformation extends GenericInformation {
 
 		sb.append("<hr/>");
 		String subtitle = node.get("subtitle");
-		if (subtitle != null && !subtitle.isBlank()) {
+		if (subtitle != null && !subtitle.trim().isEmpty()) {
 			sb.append(node.get("subtitle"));
 			sb.append("<hr/>");
 		}
 		String elements = node.get("elems");
-		if (elements != null && !elements.isBlank()) {
+		if (elements != null && !elements.trim().isEmpty()) {
 			String startText = "Elements: ";
 			String htmlText = "".concat(startText);
 			String[] element = elements.split("_");

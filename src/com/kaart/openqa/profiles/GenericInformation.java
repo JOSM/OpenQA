@@ -265,7 +265,7 @@ public abstract class GenericInformation {
 			}
 			if (data.isModified()) {
 				String addTag = source.concat("-").concat(id);
-				if (tags.containsKey(key) && !tags.get(key).isBlank()) {
+				if (tags.containsKey(key) && !tags.get(key).trim().isEmpty()) {
 					addTag = tags.get(key).concat(",").concat(addTag);
 				}
 				data.addChangeSetTag(key, addTag);
