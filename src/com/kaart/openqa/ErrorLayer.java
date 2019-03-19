@@ -142,7 +142,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			for (OsmDataLayer layer : dataLayers) {
 				DataSet ds = dataSets.get(type);
 				progressMonitor.indeterminateSubTask(tr("Updating {0}", type.getLayerName()));
-				if (ds == null || ds.isEmpty()) {
+				if (ds == null || ds.allPrimitives().isEmpty()) {
 					ds = type.getErrors(layer.getDataSet(), progressMonitor);
 				} else {
 					ds.mergeFrom(type.getErrors(layer.getDataSet(), progressMonitor));

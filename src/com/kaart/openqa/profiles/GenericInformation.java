@@ -255,7 +255,7 @@ public abstract class GenericInformation {
 		DataSet data = MainApplication.getLayerManager().getActiveDataSet();
 		// TODO figure out if we want to keep this
 		boolean addChangesetTags = Config.getPref().getBoolean(OpenQA.PREF_PREFIX.concat("changesetTags"), false);
-		if (addChangesetTags && data != null && !data.isEmpty()) {
+		if (addChangesetTags && data != null && !data.allPrimitives().isEmpty()) {
 			Map<String, String> tags = data.getChangeSetTags();
 			String key = OpenQA.NAME.toLowerCase();
 			// Clear the changeset tag if needed
