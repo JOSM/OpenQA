@@ -45,6 +45,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 	public boolean ok() {
 		boolean ok = false;
 		for (ProfilePreferences preference : tests) {
+			if (preference == null) continue;
 			boolean nok = preference.ok();
 			if (!ok) ok = nok;
 		}
