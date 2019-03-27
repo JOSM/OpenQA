@@ -2,16 +2,19 @@ package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
-import java.awt.GridBagLayout;
+import java.awt.BorderLayout;
+import java.awt.Component;
 import java.util.ArrayList;
 
+import javax.swing.JButton;
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 
 import org.openstreetmap.josm.gui.preferences.DefaultTabPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane;
 import org.openstreetmap.josm.gui.preferences.SubPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.TabPreferenceSetting;
-import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
+import org.openstreetmap.josm.tools.GBC;
 
 import com.kaart.openqa.profiles.ProfilePreferences;
 import com.kaart.openqa.profiles.keepright.KeepRightPreferences;
@@ -32,13 +35,19 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 
 	@Override
 	public void addGui(PreferenceTabbedPane gui) {
-		testPanel = new VerticallyScrollablePanel(new GridBagLayout());
+		testPanel = new JPanel();
+		testPanel.setLayout(new BorderLayout());
+		JTabbedPane tp = new JTabbedPane();
 		tests.add(new KeepRightPreferences(CACHE_DIR));
 		tests.add(new OsmosePreferences(CACHE_DIR));
-
 		for (ProfilePreferences preference : tests) {
-			gui.getValidatorPreference().addSubTab(preference, preference.getTitle(), preference.createSubTab());
+			Component subTab = preference.createSubTab();
+			JButton selectAll = new JButton(tr("Select all"));
+			tp.add(preference.getTitle(), subTab);
+			//addSubTab(preference, preference.getTitle(), preference.createSubTab());
 		}
+		testPanel.add(tp, BorderLayout.CENTER);
+		gui.createPreferenceTab(this).add(testPanel, GBC.eol().fill(GBC.BOTH));
 	}
 
 	@Override
