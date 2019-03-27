@@ -58,8 +58,9 @@ public class KeepRightPreferences extends ProfilePreferences {
 						break;
 					} else if (parts.length == 2 && KeepRightInformation.errors.get(value).equals(parts[0])){
 						for (int i = 0; i < 10; i++) {
-							if (KeepRightInformation.errors.get(value + i).equals(parts[1])) {
-								prefs.add(Integer.toString(Integer.parseInt(value) + i));
+							String toGet = Integer.toString(Integer.parseInt(value) + i);
+							if (parts[1].equals(KeepRightInformation.errors.get(toGet))) {
+								prefs.add(toGet);
 								break;
 							}
 						}
