@@ -4,16 +4,25 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 
 import org.openstreetmap.josm.gui.preferences.DefaultTabPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane;
+import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane.PreferencePanel;
 import org.openstreetmap.josm.gui.preferences.SubPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.TabPreferenceSetting;
+import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
 import org.openstreetmap.josm.tools.GBC;
 
 import com.kaart.openqa.profiles.ProfilePreferences;
@@ -29,7 +38,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 	ArrayList<ProfilePreferences> tests = new ArrayList<>();
 
 	public OpenQAPreferences(String directory) {
-		super("keepright.png", tr("OpenQA"), tr("OpenQA Settings"));
+		super(OpenQA.OPENQA_IMAGE, tr("OpenQA"), tr("OpenQA Settings"));
 		CACHE_DIR = directory;
 	}
 
@@ -43,11 +52,38 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 		for (ProfilePreferences preference : tests) {
 			Component subTab = preference.createSubTab();
 			JButton selectAll = new JButton(tr("Select all"));
-			tp.add(preference.getTitle(), subTab);
-			//addSubTab(preference, preference.getTitle(), preference.createSubTab());
+			selectAll.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					toggleBoxes(preference, true);
+				}
+			});
+
+			JButton selectNone = new JButton(tr("Select none"));
+			selectNone.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					toggleBoxes(preference, false);
+				}
+			});
+			JPanel tPanel = new VerticallyScrollablePanel(new GridBagLayout());
+			tPanel.add(selectAll);
+			tPanel.add(selectNone, GBC.eol());
+			tPanel.add(subTab);
+			tp.add(preference.getTitle(), new JScrollPane(tPanel));
 		}
 		testPanel.add(tp, BorderLayout.CENTER);
-		gui.createPreferenceTab(this).add(testPanel, GBC.eol().fill(GBC.BOTH));
+		PreferencePanel preferenceTab = gui.createPreferenceTab(this);
+		preferenceTab.add(testPanel, GBC.eol().fill(GBC.BOTH));
+	}
+
+	private void toggleBoxes(ProfilePreferences preference, boolean checked) {
+		HashMap<String, List<JCheckBox>> boxes = preference.getCheckBoxes();
+		for (List<JCheckBox> boxList : boxes.values()) {
+			for (JCheckBox checkBox : boxList) {
+				checkBox.setSelected(checked);
+			}
+		}
 	}
 
 	@Override

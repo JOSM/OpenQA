@@ -6,14 +6,12 @@ package com.kaart.openqa;
 import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.PleaseWaitRunnable;
-import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerAddEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerChangeListener;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerOrderChangeEvent;
@@ -85,12 +83,6 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 	public static void updateOpenQALayers(String CACHE_DIR) {
 		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
 		if (osmDataLayers.size() == 0) return;
-		ArrayList<Layer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayers());
-		for (Layer layer : layers) {
-			if (layer instanceof ErrorLayer) {
-				//MainApplication.getLayerManager().removeLayer(layer);
-			}
-		}
 		MainApplication.worker.submit(new UpdateLayersTask(CACHE_DIR, new PleaseWaitProgressMonitor()));
 	}
 

@@ -470,7 +470,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			return;
 		}
 		DataSet ds = MainApplication.getLayerManager().getActiveDataSet();
-		if (!ds.isModified()) {
+		if (ds != null && !ds.isModified()) {
 			GenericInformation.addChangeSetTag(null, null);
 		}
 		new GetClosestNode(e).run();

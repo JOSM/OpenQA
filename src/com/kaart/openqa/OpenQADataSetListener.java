@@ -28,46 +28,46 @@ public class OpenQADataSetListener implements DataSetListener {
 	 * @see org.openstreetmap.josm.data.osm.event.DataSetListener#dataChanged(org.openstreetmap.josm.data.osm.event.DataChangedEvent)
 	 */
 	@Override
-	public void dataChanged(DataChangedEvent arg0) {
+	public void dataChanged(DataChangedEvent e) {
 		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
 	}
 
 	@Override
-	public void otherDatasetChange(AbstractDatasetChangedEvent arg0) {
+	public void otherDatasetChange(AbstractDatasetChangedEvent e) {
 		// Don't care
 	}
 
 	@Override
-	public void nodeMoved(NodeMovedEvent arg0) {
+	public void nodeMoved(NodeMovedEvent e) {
 		// Don't care
 	}
 
 	@Override
-	public void primitivesAdded(PrimitivesAddedEvent arg0) {
-		// Don't care
-
-	}
-
-	@Override
-	public void primitivesRemoved(PrimitivesRemovedEvent arg0) {
+	public void primitivesAdded(PrimitivesAddedEvent e) {
 		// Don't care
 
 	}
 
 	@Override
-	public void relationMembersChanged(RelationMembersChangedEvent arg0) {
+	public void primitivesRemoved(PrimitivesRemovedEvent e) {
 		// Don't care
 
 	}
 
 	@Override
-	public void tagsChanged(TagsChangedEvent arg0) {
+	public void relationMembersChanged(RelationMembersChangedEvent e) {
 		// Don't care
 
 	}
 
 	@Override
-	public void wayNodesChanged(WayNodesChangedEvent arg0) {
+	public void tagsChanged(TagsChangedEvent e) {
+		// Don't care
+
+	}
+
+	@Override
+	public void wayNodesChanged(WayNodesChangedEvent e) {
 		// Don't care
 
 	}

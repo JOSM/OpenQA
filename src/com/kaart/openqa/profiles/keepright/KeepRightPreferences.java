@@ -8,6 +8,7 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
@@ -19,6 +20,7 @@ import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.GBC;
 
+import com.kaart.openqa.OpenQA;
 import com.kaart.openqa.profiles.ProfilePreferences;
 
 /**
@@ -33,7 +35,7 @@ public class KeepRightPreferences extends ProfilePreferences {
 	final static String PREF_TESTS = "openqa.keepright-tests";
 
 	public KeepRightPreferences(String directory) {
-		super("keepright.png", tr("Keep Right"), tr("Keep Right Settings"));
+		super(OpenQA.OPENQA_IMAGE, tr("Keep Right"), tr("Keep Right Settings"));
 		CACHE_DIR = directory;
 	}
 
@@ -90,13 +92,18 @@ public class KeepRightPreferences extends ProfilePreferences {
 				checked = true;
 			}
 			String errorMessage = "";
+			String baseMessage = "";
 			if (Integer.parseInt(error) % 10 == 0) {
 				errorMessage = KeepRightInformation.errors.get(error);
 			} else {
 				errorMessage = KeepRightInformation.errors.get(Integer.toString((Integer.parseInt(error) / 10) * 10));
+				baseMessage = errorMessage.trim();
 				errorMessage += "/" + KeepRightInformation.errors.get(error);
 			}
 			JCheckBox toAdd = new JCheckBox(tr(errorMessage), checked);
+			List<JCheckBox> list = (checkBoxes.get(baseMessage) != null) ? checkBoxes.get(baseMessage) : new ArrayList<JCheckBox>();
+			list.add(toAdd);
+			checkBoxes.put(baseMessage, list);
 			testPanel.add(toAdd, GBC.eol());
 		}
 		return new JScrollPane(testPanel);
