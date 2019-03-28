@@ -27,7 +27,7 @@
     <property name="plugin.class" value="com.kaart.openqa.OpenQA"/>
     <property name="plugin.description" value="OpenQA validation checker (supports Osmose and Keepright))"/>
     <property name="plugin.icon" value="images/openqa.svg"/>
-    <property name="plugin.link" value="https://www.kaart.com"/>
+    <property name="plugin.link" value="https://github.com/KaartGroup/OpenQAJOSMPlugin"/>
     <property name="plugin.canloadatruntime" value="true"/>
     <!--<property name="plugin.early" value="..."/>-->
     <!--<property name="plugin.requires" value="..."/>-->
