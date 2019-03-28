@@ -26,7 +26,7 @@
     <property name="plugin.author" value="Taylor Smock"/>
     <property name="plugin.class" value="com.kaart.openqa.OpenQA"/>
     <property name="plugin.description" value="OpenQA validation checker (supports Osmose and Keepright))"/>
-    <property name="plugin.icon" value="images/keepright.png"/>
+    <property name="plugin.icon" value="images/openqa.svg"/>
     <property name="plugin.link" value="https://www.kaart.com"/>
     <property name="plugin.canloadatruntime" value="true"/>
     <!--<property name="plugin.early" value="..."/>-->

@@ -23,6 +23,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.Logging;
 
+import com.kaart.openqa.OpenQA;
 import com.kaart.openqa.profiles.ProfilePreferences;
 
 /**
@@ -36,7 +37,7 @@ public class OsmosePreferences extends ProfilePreferences {
 	final static String PREF_TESTS = "openqa.osmose-tests";
 
 	public OsmosePreferences(String directory) {
-		super("keepright.png", tr("Osmose"), tr("osmose Settings"));
+		super(OpenQA.OPENQA_IMAGE, tr("Osmose"), tr("osmose Settings"));
 		CACHE_DIR = directory;
 	}
 

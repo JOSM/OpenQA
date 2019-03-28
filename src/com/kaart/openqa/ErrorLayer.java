@@ -611,7 +611,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	@Override
 	public Icon getIcon() {
-		return ImageProvider.get("dialogs/notes", "note_open", ImageProvider.ImageSizes.SMALLICON);
+		return ImageProvider.get(OpenQA.OPENQA_IMAGE, ImageProvider.ImageSizes.SMALLICON);
 	}
 
 	@Override

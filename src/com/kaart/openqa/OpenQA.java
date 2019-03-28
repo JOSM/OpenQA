@@ -26,7 +26,7 @@ public class OpenQA extends Plugin {
 	public static String PREF_PREFIX = NAME.toLowerCase().concat(".");
 	public static String PREF_FILETYPE = PREF_PREFIX.concat("filetype");
 
-	public static String OPENQA_IMAGE = "keepright.png";
+	public static String OPENQA_IMAGE = "openqa.svg";
 
 	public OpenQA(PluginInformation info) {
 		super(info);
