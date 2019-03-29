@@ -58,4 +58,9 @@ public class OpenQA extends Plugin {
 		OpenQAPreferences openQA = new OpenQAPreferences(CACHE_DIR);
 		return openQA;
 	}
+
+	public static String getVersion() {
+		// TODO get the version dynamically
+		return "v0.1.4";
+	}
 }
