@@ -89,6 +89,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 	private static class UpdateLayersTask extends PleaseWaitRunnable {
 		private boolean isCanceled;
 		String CACHE_DIR;
+		ErrorLayer layer;
 
 		public UpdateLayersTask(String CACHE_DIR, PleaseWaitProgressMonitor monitor) {
 			this(tr("Update {0} Layers", OpenQA.NAME), monitor, true);
@@ -101,21 +102,22 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 		@Override
 		protected void cancel() {
 			isCanceled = true;
+			layer.cancel();
 		}
 
 		@Override
 		protected void realRun() throws SAXException, IOException, OsmTransferException {
 			if (isCanceled) return;
 			List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
-			ErrorLayer toAdd = null;
+			layer = null;
 			if (errorLayers.isEmpty()) {
-				toAdd = new ErrorLayer(CACHE_DIR);
-				toAdd.setErrorClasses(KeepRightInformation.class, OsmoseInformation.class);
-				MainApplication.getLayerManager().addLayer(toAdd);
+				layer = new ErrorLayer(CACHE_DIR);
+				layer.setErrorClasses(KeepRightInformation.class, OsmoseInformation.class);
+				MainApplication.getLayerManager().addLayer(layer);
 			} else {
-				toAdd = errorLayers.get(0);
+				layer = errorLayers.get(0);
 			}
-			toAdd.update();
+			layer.update();
 		}
 
 		@Override

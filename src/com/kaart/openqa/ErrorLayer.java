@@ -98,6 +98,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	EastNorth lastClick;
 
+	private boolean updateCanceled = false;
 
 	/**
 	 * Create a new ErrorLayer using a class that extends {@code GenericInformation}
@@ -132,12 +133,21 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		addListeners();
 	}
 
+	public void cancel() {
+		updateCanceled = true;
+	}
+
 	public void update() {
 		List<OsmDataLayer> dataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
 		PleaseWaitProgressMonitor progressMonitor = new PleaseWaitProgressMonitor();
 		progressMonitor.beginTask(tr("Updating {0} layers", OpenQA.NAME));
 		for (GenericInformation type : dataSets.keySet()) {
+			if (updateCanceled) {
+				progressMonitor.cancel();
+				break;
+			}
 			for (OsmDataLayer layer : dataLayers) {
+				if (updateCanceled) break;
 				DataSet ds = dataSets.get(type);
 				progressMonitor.indeterminateSubTask(tr("Updating {0}", type.getLayerName()));
 				if (ds == null || ds.allPrimitives().isEmpty()) {
@@ -182,6 +192,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		MainApplication.getMap().mapView.removeMouseListener(this);
 		for (DataSet ds : dataSets.values()) {
 			try {
+				if (ds == null) continue;
 				ds.removeHighlightUpdateListener(this);
 			} catch (IllegalArgumentException e) {
 				Logging.debug(e.getMessage());
@@ -211,7 +222,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	public boolean isModified() {
 		boolean modified = false;
 		for (DataSet ds : dataSets.values()) {
-			if (ds.isModified()) {
+			if (ds != null && ds.isModified()) {
 				modified = true;
 				break;
 			}
@@ -258,6 +269,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		private void realrun(GenericInformation type) {
 			final ImageSizes size = ImageProvider.ImageSizes.LARGEICON;
 			DataSet ds = dataSets.get(type);
+			if (ds == null) return;
 			for (Node node : ds.getNodes()) {
 				Point p = mv.getPoint(node.getCoor());
 				String error = type.getError(node);
@@ -493,6 +505,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			HashMap<GenericInformation, ArrayList<Node>> closestNodes = new HashMap<>();
 			for (GenericInformation type : dataSets.keySet()) {
 				DataSet ds = dataSets.get(type);
+				if (ds == null) continue;
 				ArrayList<Node> closestNode = new ArrayList<>();
 				for (Node node : ds.getNodes()) {
 					Point notePoint = MainApplication.getMap().mapView.getPoint(node.getBBox().getCenter());
@@ -510,7 +523,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		private void getAdditionalInformation() {
 			for (GenericInformation type : dataSets.keySet()) {
 				boolean hasAdditionalInformation = true;
-				for (Node node : dataSets.get(type).getSelectedNodes()) {
+				DataSet ds = dataSets.get(type);
+				if (ds == null) continue;
+				for (Node node : ds.getSelectedNodes()) {
 					hasAdditionalInformation = type.cacheAdditionalInformation(node);
 					if (!hasAdditionalInformation) break;
 				}
@@ -519,23 +534,27 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 		@Override
 		public void run() {
-			Logging.info("Mouse clicked at {0}, first print", e.getPoint());
 			HashMap<GenericInformation, ArrayList<Node>> closestNode = getClosestNode(e.getPoint(), 10);
 			for (GenericInformation type : dataSets.keySet()) {
+				DataSet ds = dataSets.get(type);
+				if (ds == null) continue;
 				if (closestNode.containsKey(type)) {
-					dataSets.get(type).setSelected(closestNode.get(type));
+					ds.setSelected(closestNode.get(type));
 				} else {
-					dataSets.get(type).clearSelection();
+					ds.clearSelection();
 				}
 			}
 			for (GenericInformation type : dataSets.keySet()) {
 				if (!closestNode.containsKey(type)) {
-					dataSets.get(type).clearSelection();
+					DataSet ds = dataSets.get(type);
+					if (ds == null) continue;
+					ds.clearSelection();
 				}
 			}
 			boolean gotNode = false;
 			if (displayedNode != null) {
 				for (DataSet ds : dataSets.values()) {
+					if (ds == null) continue;
 					if (ds.containsNode(displayedNode)) {
 						gotNode = true;
 						break;
@@ -548,7 +567,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			} else {
 				invalidate();
 			}
-			Logging.info("Mouse clicked at {0}, second print", e.getPoint());
 		}
 	}
 
@@ -636,6 +654,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	public String getToolTipText() {
 		int size = 0;
 		for (DataSet ds : dataSets.values()) {
+			if (ds == null) continue;
 			size += ds.getNodes().size();
 		}
 		return trn("{0} {1} note", "{0} {1} notes", size, size, OpenQA.NAME);

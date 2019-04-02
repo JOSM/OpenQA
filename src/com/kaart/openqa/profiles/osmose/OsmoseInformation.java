@@ -44,7 +44,7 @@ import com.kaart.openqa.profiles.GenericInformation;
  */
 public class OsmoseInformation extends GenericInformation {
 	public static final String LAYER_NAME = "Osmose Errors";
-	public static String baseApi = "http://osmose.openstreetmap.fr/api/0.2/";
+	public static String baseApi = "http://osmose.openstreetmap.fr/en/api/0.2/";
 	public static String baseImg = "http://osmose.openstreetmap.fr/en/images/markers/marker-b-%s.png";
 	public static String baseErrorUrl = "http://osmose.openstreetmap.fr/en/error/";
 
