@@ -55,7 +55,7 @@ import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.AbstractModifiableLayer;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
-import org.openstreetmap.josm.gui.progress.swing.PleaseWaitProgressMonitor;
+import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.gui.widgets.HtmlPanel;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
@@ -137,9 +137,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		updateCanceled = true;
 	}
 
-	public void update() {
+	public void update(ProgressMonitor monitor) {
 		List<OsmDataLayer> dataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
-		PleaseWaitProgressMonitor progressMonitor = new PleaseWaitProgressMonitor();
+		ProgressMonitor progressMonitor = monitor.createSubTaskMonitor(0, false);
 		progressMonitor.beginTask(tr("Updating {0} layers", OpenQA.NAME));
 		for (GenericInformation type : dataSets.keySet()) {
 			if (updateCanceled) {
@@ -169,7 +169,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			}
 		}
 		progressMonitor.finishTask();
-		progressMonitor.close();
 		invalidate();
 	}
 
@@ -286,6 +285,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 			for (GenericInformation type : dataSets.keySet()) {
 				DataSet ds = dataSets.get(type);
+				if (ds == null) continue;
 				ArrayList<Node> selectedNodes = new ArrayList<>(ds.getSelectedNodes());
 				selectedNodes.sort(null);
 				if (!selectedNodes.isEmpty()) {
@@ -299,6 +299,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 				paintSelectedNode(g, mv, iconHeight, iconWidth, selectedErrors);
 			} else {
 				for (DataSet ds : dataSets.values()) {
+					if (ds == null) continue;
 					ds.clearSelection();
 				}
 			}

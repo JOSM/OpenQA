@@ -134,25 +134,25 @@ public class OsmoseInformation extends GenericInformation {
 
 	@Override
 	public DataSet getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
-		monitor.subTask(tr("Getting {0} errors", "Osmose"));
+		ProgressMonitor subTask = monitor.createSubTaskMonitor(0, false);
+		subTask.beginTask(tr("Getting {0} errors", "Osmose"));
 		DataSet returnDataSet = null;
 		String windowTitle = tr("Updating {0} information", "Osmose");
 		if (bounds.size() > 10) {
-			monitor.subTask(windowTitle);
-			monitor.setTicksCount(bounds.size());
-			monitor.setTicks(0);
+			subTask.subTask(windowTitle);
+			subTask.setTicksCount(bounds.size());
+			subTask.setTicks(0);
 		} else {
-			monitor.indeterminateSubTask(windowTitle);
+			subTask.indeterminateSubTask(windowTitle);
 		}
 		for (Bounds bound : bounds) {
-			if (monitor.isCanceled()) break;
-			monitor.worked(1);
+			if (subTask.isCanceled()) break;
 			DataSet ds = getGeoJsonErrors(bound);
 			if (ds != null) {
 				if (returnDataSet == null) {
 					returnDataSet = ds;
 				} else {
-					returnDataSet.mergeFrom(ds);
+					returnDataSet.mergeFrom(ds, subTask.createSubTaskMonitor(1, false));
 				}
 			}
 		}

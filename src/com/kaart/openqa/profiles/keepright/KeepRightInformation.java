@@ -187,8 +187,9 @@ public class KeepRightInformation extends GenericInformation {
 	}
 
 	@Override
-	public DataSet getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
-		monitor.subTask(tr("Getting {0} errors", getName()));
+	public DataSet getErrors(List<Bounds> bounds, ProgressMonitor inMonitor) {
+		ProgressMonitor monitor = inMonitor.createSubTaskMonitor(0, false);
+		monitor.beginTask(tr("Getting {0} errors", getName()));
 		DataSet returnDataSet = null;
 		String windowTitle = tr("Updating {0} information", getName());
 		if (bounds.size() > 10) {
@@ -200,16 +201,16 @@ public class KeepRightInformation extends GenericInformation {
 		}
 		for (Bounds bound : bounds) {
 			if (monitor.isCanceled()) break;
-			monitor.worked(1);
 			DataSet ds = getGeoJsonErrors(bound);
 			if (ds != null) {
 				if (returnDataSet == null) {
 					returnDataSet = ds;
 				} else {
-					returnDataSet.mergeFrom(ds);
+					returnDataSet.mergeFrom(ds, monitor.createSubTaskMonitor(1, false));
 				}
 			}
 		}
+		monitor.finishTask();
 		return returnDataSet;
 	}
 

@@ -117,7 +117,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 			} else {
 				layer = errorLayers.get(0);
 			}
-			layer.update();
+			layer.update(progressMonitor);
 		}
 
 		@Override
