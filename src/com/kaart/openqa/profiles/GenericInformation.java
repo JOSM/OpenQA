@@ -9,11 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.BBox;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
@@ -98,9 +100,7 @@ public abstract class GenericInformation {
 	public DataSet getErrors(DataSet dataSet, ProgressMonitor progressMonitor) {
 		List<Bounds> bounds = dataSet.getDataSourceBounds();
 		if (bounds.isEmpty()) {
-			bounds = new ArrayList<>();
-			Bounds tBound = getDefaultBounds(dataSet);
-			bounds.add(tBound);
+			bounds = getDefaultBounds(dataSet);
 		}
 		return getErrors(bounds, progressMonitor);
 	}
@@ -118,18 +118,62 @@ public abstract class GenericInformation {
 	 * @param dataSet with the data of interest
 	 * @return The bounds that encompasses the @{code DataSet}
 	 */
-	public static Bounds getDefaultBounds(DataSet dataSet) {
-		BBox bound = new BBox();
-		for (OsmPrimitive osm : dataSet.allPrimitives()) {
+	public static List<Bounds> getDefaultBounds(DataSet dataSet) {
+		List<BBox> bboxes = new ArrayList<>();
+		double bboxMaxSize = 100000000;
+		// Ensure that we go through a dataset predictably
+		TreeSet<OsmPrimitive> treeSet = new TreeSet<>(dataSet.allPrimitives());
+		for (OsmPrimitive osm : treeSet) {
 			// Don't look at relations -- they can get really large, really fast.
 			if (!(osm instanceof Relation)) {
-				bound.add(osm.getBBox());
+				boolean added = false;
+				BBox smallestBBox = null;
+				BBox osmBBox = osm.getBBox();
+				for (BBox bound : bboxes) {
+					if (bound.bounds(osmBBox) && bound.isValid()) {
+						// Since osmBBox is entirely within the bound, don't add it.
+						added = true;
+						smallestBBox = bound;
+						break;
+					}
+					BBox tBound = new BBox(bound);
+					tBound.add(osmBBox);
+					double area = getArea(tBound);
+					if (area < bboxMaxSize && area < getArea(smallestBBox)) {
+						smallestBBox = bound;
+					}
+				}
+				if (!added && smallestBBox == null) {
+					bboxes.add(osmBBox);
+				} else if (!added && smallestBBox != null) {
+					smallestBBox.add(osmBBox);
+					if (!bboxes.contains(smallestBBox)) bboxes.add(smallestBBox);
+				}
 			}
 		}
 
-		Bounds rBound = new Bounds(bound.getBottomRight());
-		rBound.extend(bound.getTopLeft());
-		return rBound;
+		List<Bounds> rBounds = new ArrayList<>();
+		for (BBox bound : bboxes) {
+			Bounds rBound = new Bounds(bound.getBottomRight());
+			rBound.extend(bound.getTopLeft());
+			rBounds.add(rBound);
+		}
+		return rBounds;
+	}
+
+	/**
+	 * Get the area of a bbox
+	 * @param bbox to get an area of
+	 * @return The area of a bbox in meters^2
+	 */
+	private static double getArea(BBox bbox) {
+		if (bbox == null) return Double.MAX_VALUE;
+		LatLon lr = bbox.getBottomRight();
+		LatLon ul = bbox.getTopLeft();
+		LatLon ll = new LatLon(lr.lat(), ul.lon());
+		double width = ll.greatCircleDistance(lr);
+		double height = ll.greatCircleDistance(ul);
+		return width * height;
 	}
 
 	/**
