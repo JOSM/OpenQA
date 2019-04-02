@@ -19,7 +19,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
@@ -44,7 +43,6 @@ import org.openstreetmap.josm.actions.mapmode.MapMode;
 import org.openstreetmap.josm.actions.mapmode.SelectAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.EastNorth;
-import org.openstreetmap.josm.data.osm.DataSelectionListener;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.HighlightUpdateListener;
 import org.openstreetmap.josm.data.osm.Node;
@@ -70,7 +68,7 @@ import org.openstreetmap.josm.tools.bugreport.ReportedException;
 
 import com.kaart.openqa.profiles.GenericInformation;
 
-public class ErrorLayer extends AbstractModifiableLayer implements MouseListener, DataSelectionListener, HighlightUpdateListener {
+public class ErrorLayer extends AbstractModifiableLayer implements MouseListener, HighlightUpdateListener {
 	/**
 	 * Pattern to detect end of sentences followed by another one, or a link, in western script.
 	 * Group 1 (capturing): period, interrogation mark, exclamation mark
@@ -145,7 +143,17 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 				if (ds == null || ds.allPrimitives().isEmpty()) {
 					ds = type.getErrors(layer.getDataSet(), progressMonitor);
 				} else {
-					ds.mergeFrom(type.getErrors(layer.getDataSet(), progressMonitor));
+					DataSet mergeFrom = type.getErrors(layer.getDataSet(), progressMonitor);
+					for (OsmPrimitive osm: mergeFrom.allPrimitives()) {
+						OsmPrimitive osm2 = ds.getPrimitiveById(osm.getPrimitiveId());
+						mergeFrom.removePrimitive(osm.getPrimitiveId());
+						ds.removePrimitive(osm2);
+						if (osm2 != null && osm2.isModified()) {
+							Logging.info("Primitive found");
+							osm = osm2;
+						}
+						ds.addPrimitive(osm);
+					}
 				}
 				dataSets.put(type, ds);
 			}
@@ -166,7 +174,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	private void addListeners() {
 		for (DataSet ds : dataSets.values()) {
 			ds.addHighlightUpdateListener(this);
-			ds.addSelectionListener(this);
 		}
 	}
 
@@ -176,7 +183,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		for (DataSet ds : dataSets.values()) {
 			try {
 				ds.removeHighlightUpdateListener(this);
-				ds.removeSelectionListener(this);
 			} catch (IllegalArgumentException e) {
 				Logging.debug(e.getMessage());
 			}
@@ -283,7 +289,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 				for (DataSet ds : dataSets.values()) {
 					ds.clearSelection();
 				}
-				hideNodeWindow();
 			}
 		}
 
@@ -311,10 +316,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			Point p = mv.getPoint(currentClick);
 			g.setColor(ColorHelper.html2color(Config.getPref().get("color.selected")));
 			g.drawRect(p.x - (iconWidth / 2), p.y - (iconHeight / 2), iconWidth - 1, iconHeight - 1);
-
-			if (!currentClick.equals(lastClick)) {
-				hideNodeWindow();
-			}
 
 			int xl = p.x - (iconWidth / 2) - 5;
 			int xr = p.x + (iconWidth / 2) + 5;
@@ -462,6 +463,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			displayedPanel = null;
 			displayedNode = null;
 		}
+		invalidate();
 	}
 
 	@Override
@@ -505,12 +507,25 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			return closestNodes;
 		}
 
+		private void getAdditionalInformation() {
+			for (GenericInformation type : dataSets.keySet()) {
+				boolean hasAdditionalInformation = true;
+				for (Node node : dataSets.get(type).getSelectedNodes()) {
+					hasAdditionalInformation = type.cacheAdditionalInformation(node);
+					if (!hasAdditionalInformation) break;
+				}
+			}
+		}
+
 		@Override
 		public void run() {
+			Logging.info("Mouse clicked at {0}, first print", e.getPoint());
 			HashMap<GenericInformation, ArrayList<Node>> closestNode = getClosestNode(e.getPoint(), 10);
-			if (!closestNode.isEmpty()) {
-				for (GenericInformation type : closestNode.keySet()) {
+			for (GenericInformation type : dataSets.keySet()) {
+				if (closestNode.containsKey(type)) {
 					dataSets.get(type).setSelected(closestNode.get(type));
+				} else {
+					dataSets.get(type).clearSelection();
 				}
 			}
 			for (GenericInformation type : dataSets.keySet()) {
@@ -527,10 +542,13 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 					}
 				}
 			}
+			getAdditionalInformation();
 			if (!gotNode) {
 				hideNodeWindow();
+			} else {
+				invalidate();
 			}
-			invalidate();
+			Logging.info("Mouse clicked at {0}, second print", e.getPoint());
 		}
 	}
 
@@ -670,16 +688,6 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		.append('\n').append(tr("Total notes")).append(' ')
 		.append(size);
 		return sb;
-	}
-
-	@Override
-	public void selectionChanged(SelectionChangeEvent event) {
-		Set<OsmPrimitive> selected = event.getAdded();
-		if (event.getAdded().iterator().hasNext()) {
-			DataSet ds = event.getAdded().iterator().next().getDataSet();
-			ds.setSelected(selected);
-		}
-		invalidate();
 	}
 
 	@Override

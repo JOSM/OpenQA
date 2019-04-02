@@ -120,7 +120,7 @@ public abstract class GenericInformation {
 	 */
 	public static List<Bounds> getDefaultBounds(DataSet dataSet) {
 		List<BBox> bboxes = new ArrayList<>();
-		double bboxMaxSize = 100000000;
+		double bboxMaxSize = 10000000;
 		// Ensure that we go through a dataset predictably
 		TreeSet<OsmPrimitive> treeSet = new TreeSet<>(dataSet.allPrimitives());
 		for (OsmPrimitive osm : treeSet) {
@@ -194,6 +194,15 @@ public abstract class GenericInformation {
 	 * @return {@code String} with the information in HTML format
 	 */
 	public abstract String getNodeToolTip(Node node);
+
+	/**
+	 * Cache additional information for a node
+	 * @param node to get information from
+	 * @return true if there is additional information
+	 */
+	public boolean cacheAdditionalInformation(Node node) {
+		return false;
+	}
 
 	/**
 	 * Get a username from an {@code OsmPrimitiveId} as a {@code Long}

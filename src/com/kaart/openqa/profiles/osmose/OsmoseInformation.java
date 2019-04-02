@@ -308,8 +308,13 @@ public class OsmoseInformation extends GenericInformation {
 	}
 
 	@Override
-	public String getNodeToolTip(Node node) {
+	public boolean cacheAdditionalInformation(Node node) {
 		getAdditionalInformation(node);
+		return true;
+	}
+
+	@Override
+	public String getNodeToolTip(Node node) {
 		StringBuilder sb = new StringBuilder("<html>");
 		sb.append(tr("Osmose"))
 		  .append(": ").append(node.get("title"))
