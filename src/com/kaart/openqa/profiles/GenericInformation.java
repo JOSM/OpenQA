@@ -3,6 +3,8 @@
  */
 package com.kaart.openqa.profiles;
 
+import static org.openstreetmap.josm.tools.I18n.tr;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -100,7 +102,7 @@ public abstract class GenericInformation {
 	public DataSet getErrors(DataSet dataSet, ProgressMonitor progressMonitor) {
 		List<Bounds> bounds = dataSet.getDataSourceBounds();
 		if (bounds.isEmpty()) {
-			bounds = getDefaultBounds(dataSet);
+			bounds = getDefaultBounds(dataSet, progressMonitor.createSubTaskMonitor(0, false));
 		}
 		return getErrors(bounds, progressMonitor);
 	}
@@ -118,12 +120,15 @@ public abstract class GenericInformation {
 	 * @param dataSet with the data of interest
 	 * @return The bounds that encompasses the @{code DataSet}
 	 */
-	public static List<Bounds> getDefaultBounds(DataSet dataSet) {
+	public static List<Bounds> getDefaultBounds(DataSet dataSet, ProgressMonitor monitor) {
+		monitor.beginTask(tr("Building default bounds"), dataSet.allPrimitives().size());
 		List<BBox> bboxes = new ArrayList<>();
 		double bboxMaxSize = 10000000;
 		// Ensure that we go through a dataset predictably
 		TreeSet<OsmPrimitive> treeSet = new TreeSet<>(dataSet.allPrimitives());
 		for (OsmPrimitive osm : treeSet) {
+			if (monitor.isCanceled()) break;
+			monitor.worked(1);
 			// Don't look at relations -- they can get really large, really fast.
 			if (!(osm instanceof Relation)) {
 				boolean added = false;
@@ -158,6 +163,7 @@ public abstract class GenericInformation {
 			rBound.extend(bound.getTopLeft());
 			rBounds.add(rBound);
 		}
+		monitor.finishTask();
 		return rBounds;
 	}
 
