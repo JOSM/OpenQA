@@ -105,8 +105,7 @@ public class OsmoseInformation extends GenericInformation {
 				osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get("error_id")), 1);
 			}
 		} catch (IOException e) {
-			Logging.debug(e.getMessage());
-			e.printStackTrace();
+			Logging.error(e);
 		}
 		cache.close();
 		return ds;
@@ -124,8 +123,7 @@ public class OsmoseInformation extends GenericInformation {
 		try {
 			cache = GenericInformation.getFile(url, formats.get(type), new File(CACHE_DIR, DATA_SUB_DIR).getCanonicalPath());
 		} catch (IOException e) {
-			Logging.debug(e.getMessage());
-			e.printStackTrace();
+			Logging.error(e);
 			cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
 		}
 		cache.setDeleteOnExit(true);

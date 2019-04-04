@@ -126,7 +126,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 				enabledSources.put(info, true);
 			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
 					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
-				e.printStackTrace();
+				Logging.error(e);
 				new BugReport(new ReportedException(e));
 			}
 		}
