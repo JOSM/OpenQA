@@ -349,7 +349,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 						(MouseWheelEvent) SwingUtilities.convertMouseEvent(displayedWindow, e, mv)));
 			}
 			for (GenericInformation type : dataSets.keySet()) {
-				for (OsmPrimitive osmPrimitive : dataSets.get(type).getSelected()) {
+				DataSet temporaryDataSet = dataSets.get(type);
+				if (temporaryDataSet == null) continue;
+				for (OsmPrimitive osmPrimitive : temporaryDataSet.getSelected()) {
 					if (!(osmPrimitive instanceof Node)) continue;
 					Node selectedNode = (Node) osmPrimitive;
 					String text = type.getNodeToolTip(selectedNode);
