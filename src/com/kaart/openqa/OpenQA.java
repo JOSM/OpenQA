@@ -23,10 +23,10 @@ import org.openstreetmap.josm.tools.Logging;
 public class OpenQA extends Plugin {
 	public static final String NAME = "OpenQA";
 	public String CACHE_DIR;
-	public static String PREF_PREFIX = NAME.toLowerCase().concat(".");
-	public static String PREF_FILETYPE = PREF_PREFIX.concat("filetype");
+	public static final String PREF_PREFIX = NAME.toLowerCase().concat(".");
+	public static final String PREF_FILETYPE = PREF_PREFIX.concat("filetype");
 
-	public static String OPENQA_IMAGE = "openqa.svg";
+	public static final String OPENQA_IMAGE = "openqa.svg";
 
 	public OpenQA(PluginInformation info) {
 		super(info);
@@ -37,10 +37,9 @@ public class OpenQA extends Plugin {
 			Logging.debug(e.getMessage());
 		}
 		MainApplication.getLayerManager().addLayerChangeListener(new OpenQALayerChangeListener(CACHE_DIR));
-		if (Config.getPref().get(PREF_FILETYPE) == "") {
+		if (Config.getPref().get(PREF_FILETYPE).equals("")) {
 			Config.getPref().put(PREF_FILETYPE, "geojson");
 		}
-		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
 		AbstractAction openqaAction = new AbstractAction(NAME.concat(tr(" layer")),
 				ImageProvider.get(OPENQA_IMAGE, ImageProvider.ImageSizes.MENU)) {
 			private static final long serialVersionUID = 1L;

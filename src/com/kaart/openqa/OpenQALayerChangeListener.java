@@ -82,7 +82,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 	 */
 	public static void updateOpenQALayers(String CACHE_DIR) {
 		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
-		if (osmDataLayers.size() == 0) return;
+		if (osmDataLayers.isEmpty()) return;
 		MainApplication.worker.submit(new UpdateLayersTask(CACHE_DIR, new PleaseWaitProgressMonitor()));
 	}
 
