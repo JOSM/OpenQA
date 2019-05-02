@@ -35,7 +35,6 @@ public class OpenQADataSetListener implements DataSetListener {
 	 */
 	@Override
 	public void dataChanged(DataChangedEvent e) {
-		Logging.error(e.toString());
 		List<Bounds> tBounds = e.getDataset().getDataSourceBounds();
 		if (bounds == null || bounds.containsAll(tBounds)) {
 			bounds = tBounds;
