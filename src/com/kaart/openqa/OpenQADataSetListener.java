@@ -3,6 +3,9 @@
  */
 package com.kaart.openqa;
 
+import java.util.List;
+
+import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.event.AbstractDatasetChangedEvent;
 import org.openstreetmap.josm.data.osm.event.DataChangedEvent;
 import org.openstreetmap.josm.data.osm.event.DataSetListener;
@@ -12,6 +15,7 @@ import org.openstreetmap.josm.data.osm.event.PrimitivesRemovedEvent;
 import org.openstreetmap.josm.data.osm.event.RelationMembersChangedEvent;
 import org.openstreetmap.josm.data.osm.event.TagsChangedEvent;
 import org.openstreetmap.josm.data.osm.event.WayNodesChangedEvent;
+import org.openstreetmap.josm.tools.Logging;
 
 /**
  * @author Taylor Smock
@@ -19,7 +23,9 @@ import org.openstreetmap.josm.data.osm.event.WayNodesChangedEvent;
  */
 public class OpenQADataSetListener implements DataSetListener {
 
-	private String CACHE_DIR;
+	private List<Bounds> bounds;
+
+	private final String CACHE_DIR;
 
 	public OpenQADataSetListener(String CACHE_DIR) {
 		this.CACHE_DIR = CACHE_DIR;
@@ -29,7 +35,12 @@ public class OpenQADataSetListener implements DataSetListener {
 	 */
 	@Override
 	public void dataChanged(DataChangedEvent e) {
-		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
+		Logging.error(e.toString());
+		List<Bounds> tBounds = e.getDataset().getDataSourceBounds();
+		if (bounds == null || bounds.containsAll(tBounds)) {
+			bounds = tBounds;
+			OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
+		}
 	}
 
 	@Override

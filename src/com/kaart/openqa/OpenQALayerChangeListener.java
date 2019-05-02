@@ -60,7 +60,10 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 			OpenQADataSetListener listener = new OpenQADataSetListener(CACHE_DIR);
 			layer.data.addDataSetListener(listener);
 			listeners.put(layer, listener);
-			updateOpenQALayers(CACHE_DIR);
+			List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
+			if (!errorLayers.isEmpty()) {
+				updateOpenQALayers(CACHE_DIR);
+			}
 		}
 	}
 
@@ -78,12 +81,12 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 
 	/**
 	 * Update all the OpenQA layers
-	 * @param CACHE_DIR The directory to cache files in
+	 * @param cacheDir The directory to cache files in
 	 */
-	public static void updateOpenQALayers(String CACHE_DIR) {
+	public static void updateOpenQALayers(String cacheDir) {
 		List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
 		if (osmDataLayers.isEmpty()) return;
-		MainApplication.worker.submit(new UpdateLayersTask(CACHE_DIR, new PleaseWaitProgressMonitor()));
+		MainApplication.worker.submit(new UpdateLayersTask(cacheDir, new PleaseWaitProgressMonitor()));
 	}
 
 	private static class UpdateLayersTask extends PleaseWaitRunnable {
@@ -91,9 +94,9 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 		String CACHE_DIR;
 		ErrorLayer layer;
 
-		public UpdateLayersTask(String CACHE_DIR, PleaseWaitProgressMonitor monitor) {
+		public UpdateLayersTask(String cacheDir, PleaseWaitProgressMonitor monitor) {
 			this(tr("Update {0} Layers", OpenQA.NAME), monitor, true);
-			this.CACHE_DIR = CACHE_DIR;
+			CACHE_DIR = cacheDir;
 		}
 		public UpdateLayersTask(String title, ProgressMonitor progressMonitor, boolean ignoreException) {
 			super(title, progressMonitor, ignoreException);
