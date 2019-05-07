@@ -15,7 +15,7 @@ import org.openstreetmap.josm.data.osm.event.PrimitivesRemovedEvent;
 import org.openstreetmap.josm.data.osm.event.RelationMembersChangedEvent;
 import org.openstreetmap.josm.data.osm.event.TagsChangedEvent;
 import org.openstreetmap.josm.data.osm.event.WayNodesChangedEvent;
-import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.gui.MainApplication;
 
 /**
  * @author Taylor Smock
@@ -36,7 +36,8 @@ public class OpenQADataSetListener implements DataSetListener {
 	@Override
 	public void dataChanged(DataChangedEvent e) {
 		List<Bounds> tBounds = e.getDataset().getDataSourceBounds();
-		if (bounds == null || !bounds.containsAll(tBounds)) {
+		List<ErrorLayer> layers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
+		if (!layers.isEmpty() && (bounds == null || !bounds.containsAll(tBounds))) {
 			bounds = tBounds;
 			OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
 		}
