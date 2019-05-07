@@ -118,6 +118,7 @@ public abstract class GenericInformation {
 	/**
 	 * Get the bounds for a dataSet
 	 * @param dataSet with the data of interest
+	 * @param monitor the ProgressMonitor with which to see progress with
 	 * @return The bounds that encompasses the @{code DataSet}
 	 */
 	public static List<Bounds> getDefaultBounds(DataSet dataSet, ProgressMonitor monitor) {

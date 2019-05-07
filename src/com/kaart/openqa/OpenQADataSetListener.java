@@ -36,7 +36,7 @@ public class OpenQADataSetListener implements DataSetListener {
 	@Override
 	public void dataChanged(DataChangedEvent e) {
 		List<Bounds> tBounds = e.getDataset().getDataSourceBounds();
-		if (bounds == null || bounds.containsAll(tBounds)) {
+		if (bounds == null || !bounds.containsAll(tBounds)) {
 			bounds = tBounds;
 			OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
 		}
