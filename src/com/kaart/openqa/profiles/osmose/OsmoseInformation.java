@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.SortedMap;
 import java.util.TreeMap;
 
 import javax.json.Json;
@@ -43,27 +45,30 @@ import com.kaart.openqa.profiles.GenericInformation;
  *
  */
 public class OsmoseInformation extends GenericInformation {
+	public static final String NAME = "Osmose";
+
 	public static final String LAYER_NAME = "Osmose Errors";
-	public static String baseApi = "http://osmose.openstreetmap.fr/en/api/0.2/";
-	public static String baseImg = "http://osmose.openstreetmap.fr/en/images/markers/marker-b-%s.png";
-	public static String baseErrorUrl = "http://osmose.openstreetmap.fr/en/error/";
+	public static final String BASE_API = "http://osmose.openstreetmap.fr/en/api/0.2/";
+	public static final String BASE_IMG = "http://osmose.openstreetmap.fr/en/images/markers/marker-b-%s.png";
+	public static final String BASE_ERROR_URL = "http://osmose.openstreetmap.fr/en/error/";
 
-	public static TreeMap<String, String> formats = new TreeMap<>();
+	private static final String ADDITIONAL_INFORMATION = "ADDITIONAL_INFORMATION";
 
-	public OsmoseInformation(String CACHE_DIR) {
-		super(CACHE_DIR);
+	protected static SortedMap<String, String> formats = new TreeMap<>();
+
+	public OsmoseInformation(String cacheDir) {
+		super(cacheDir);
 	}
 
 	@Override
 	public String getName() {
-		return "Osmose";
+		return NAME;
 	}
 
 	private DataSet getGeoJsonErrors(Bounds bound) {
 		CachedFile cache = getFile(bound);
 		DataSet ds = new DataSet();
-		try {
-			JsonParser json = Json.createParser(cache.getInputStream());
+		try (JsonParser json = Json.createParser(cache.getInputStream())) {
 			ArrayList<String> fields = new ArrayList<>();
 			while (json.hasNext()) {
 				if (json.next() == Event.START_OBJECT) {
@@ -102,7 +107,7 @@ public class OsmoseInformation extends GenericInformation {
 				}
 			}
 			for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
-				osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get("error_id")), 1);
+				osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get(ERROR_ID)), 1);
 			}
 		} catch (IOException e) {
 			Logging.error(e);
@@ -114,17 +119,17 @@ public class OsmoseInformation extends GenericInformation {
 	private CachedFile getFile(Bounds bound) {
 		String type = "json";
 		String enabled = buildDownloadErrorList();
-		String url = baseApi.concat("errors?full=true").concat("&item=").concat(enabled);
+		String url = BASE_API.concat("errors?full=true").concat("&item=").concat(enabled);
 		url = url.concat("&bbox=").concat(Double.toString(bound.getMinLon()));
 		url = url.concat(",").concat(Double.toString(bound.getMinLat()));
 		url = url.concat(",").concat(Double.toString(bound.getMaxLon()));
 		url = url.concat(",").concat(Double.toString(bound.getMaxLat()));
 		CachedFile cache;
 		try {
-			cache = GenericInformation.getFile(url, formats.get(type), new File(CACHE_DIR, DATA_SUB_DIR).getCanonicalPath());
+			cache = GenericInformation.getFile(url, formats.get(type), new File(cacheDir, DATA_SUB_DIR).getCanonicalPath());
 		} catch (IOException e) {
 			Logging.error(e);
-			cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
+			cache = GenericInformation.getFile(url, formats.get(type), cacheDir);
 		}
 		cache.setDeleteOnExit(true);
 		return cache;
@@ -133,9 +138,9 @@ public class OsmoseInformation extends GenericInformation {
 	@Override
 	public DataSet getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
 		ProgressMonitor subTask = monitor.createSubTaskMonitor(0, false);
-		subTask.beginTask(tr("Getting {0} errors", "Osmose"));
+		subTask.beginTask(tr("Getting {0} errors", NAME));
 		DataSet returnDataSet = null;
-		String windowTitle = tr("Updating {0} information", "Osmose");
+		String windowTitle = tr("Updating {0} information", NAME);
 		if (bounds.size() > 10) {
 			subTask.subTask(windowTitle);
 			subTask.setTicksCount(bounds.size());
@@ -159,21 +164,21 @@ public class OsmoseInformation extends GenericInformation {
 
 	@Override
 	public String buildDownloadErrorList() {
-		String list = "";
+		StringBuilder list = new StringBuilder();
 		List<String> enabled = Config.getPref().getList("openqa.osmose-tests", buildDefaultPref());
 		for (int i = 0; i < enabled.size(); i++) {
-			list += enabled.get(i);
+			list.append(enabled.get(i));
 			if (i < enabled.size() - 1) {
-				list += ",";
+				list.append(",");
 			}
 		}
-		return list;
+		return list.toString();
 	}
 
 	@Override
 	public ArrayList<String> buildDefaultPref() {
 		ArrayList<String> rArray = new ArrayList<>();
-		for (String error : getErrors(CACHE_DIR).keySet()) {
+		for (String error : getErrors(cacheDir).keySet()) {
 			rArray.add(error);
 		}
 		return rArray;
@@ -181,14 +186,13 @@ public class OsmoseInformation extends GenericInformation {
 
 	/**
 	 * Get all the possible errors
-	 * @param CACHE_DIR Directory to store error list file
-	 * @return TreeMap&lt;String errorNumber, String errorName&gt;
+	 * @param cacheDir Directory to store error list file
+	 * @return SortedMap&lt;String errorNumber, String errorName&gt;
 	 */
-	public static TreeMap<String, String> getErrors(String CACHE_DIR) {
+	public static SortedMap<String, String> getErrors(String cacheDir) {
 		TreeMap<String, String> tErrors = new TreeMap<>();
-		try {
-			CachedFile cache = new CachedFile(baseApi + "meta/items");
-			cache.setDestDir(CACHE_DIR);
+		try (CachedFile cache = new CachedFile(BASE_API + "meta/items")) {
+			cache.setDestDir(cacheDir);
 			JsonParser parser = Json.createParser(cache.getInputStream());
 			while (parser.hasNext()) {
 				if (parser.next() == Event.START_OBJECT) {
@@ -207,7 +211,6 @@ public class OsmoseInformation extends GenericInformation {
 					}
 				}
 			}
-			cache.close();
 			parser.close();
 		} catch (IOException e) {
 			Logging.debug(e.getMessage());
@@ -218,16 +221,15 @@ public class OsmoseInformation extends GenericInformation {
 
 	/**
 	 * Get the errors and their categories
-	 * @param CACHE_DIR directory to cache information in
-	 * @return TreeMap&lt;String category_number, TreeMap&lt;String category, TreeMap&lt;String errorNumber, String errorName&gt;&gt;&gt;
+	 * @param cacheDir directory to cache information in
+	 * @return SortedMap&lt;String category_number, TreeMap&lt;String category, TreeMap&lt;String errorNumber, String errorName&gt;&gt;&gt;
 	 */
-	public static TreeMap<String, TreeMap<String, TreeMap<String, String>>> getCategories(String CACHE_DIR) {
-		TreeMap<String, TreeMap<String, TreeMap<String, String>>> categories = new TreeMap<>();
-		TreeMap<String, String> errors = getErrors(CACHE_DIR);
-		try {
-			CachedFile cache = new CachedFile(baseApi + "meta/categories");
-			cache.setDestDir(CACHE_DIR);
-			JsonParser parser;
+	public static SortedMap<String, SortedMap<String, SortedMap<String, String>>> getCategories(String cacheDir) {
+		SortedMap<String, SortedMap<String, SortedMap<String, String>>> categories = new TreeMap<>();
+		SortedMap<String, String> errors = getErrors(cacheDir);
+		JsonParser parser = null;
+		try (CachedFile cache = new CachedFile(BASE_API + "meta/categories")) {
+			cache.setDestDir(cacheDir);
 			parser = Json.createParser(cache.getInputStream());
 			while (parser.hasNext()) {
 				if (parser.next() == Event.START_OBJECT) {
@@ -243,19 +245,19 @@ public class OsmoseInformation extends GenericInformation {
 							String nItem = Integer.toString(item.getInt("item"));
 							catErrors.put(nItem, errors.get(nItem));
 						}
-						TreeMap<String, TreeMap<String, String>> tMap = new TreeMap<>();
+						SortedMap<String, SortedMap<String, String>> tMap = new TreeMap<>();
 						tMap.put(name, catErrors);
 						categories.put(category, tMap);
 					}
 				}
 			}
-			cache.close();
-			parser.close();
 		} catch (IOException e) {
 			Logging.debug(e.getMessage());
-			TreeMap<String, TreeMap<String, String>> tMap = new TreeMap<>();
+			SortedMap<String, SortedMap<String, String>> tMap = new TreeMap<>();
 			tMap.put(tr("No categories found"), errors);
 			categories.put("-1", tMap);
+		} finally {
+			if (parser != null) parser.close();
 		}
 		return categories;
 	}
@@ -272,25 +274,30 @@ public class OsmoseInformation extends GenericInformation {
 
 		@Override
 		public void run() {
+			JsonParser parser = null;
 			try {
-				URL url = new URL(baseApi + "error/" + node.get("error_id"));
-				JsonParser parser = Json.createParser(url.openStream());
+				URL url = new URL(BASE_API + "error/" + node.get(ERROR_ID));
+				parser = Json.createParser(url.openStream());
 				while (parser.hasNext()) {
 					if (parser.next() == Event.START_OBJECT) {
 						JsonObject info = parser.getObject();
-						for (String key : info.keySet()) {
+						for (Entry<String, JsonValue> entry : info.entrySet()) {
+							String key = entry.getKey();
+							JsonValue value = entry.getValue();
 							if ("elems".equals(key)) continue;// TODO actually deal with it in json format...
-							if (info.get(key).getValueType() == ValueType.STRING) {
+							if (value.getValueType() == ValueType.STRING) {
 								node.put(key, info.getString(key));
 							} else {
-								node.put(key, info.get(key).toString());
+								node.put(key, value.toString());
 							}
 						}
 					}
 				}
-				node.put("additionalInformation", "true");
+				node.put(ADDITIONAL_INFORMATION, "true");
 			} catch (IOException e) {
 				Logging.debug(e.getMessage());
+			} finally {
+				if (parser != null) parser.close();
 			}
 			synchronized (this) {
 				notifyAll();
@@ -299,7 +306,7 @@ public class OsmoseInformation extends GenericInformation {
 	}
 
 	private static void getAdditionalInformation(Node node) {
-		if (!node.hasKey("additionalInformation") || !node.get("additionalInformation").equals("true")) {
+		if (!node.hasKey(ADDITIONAL_INFORMATION) || !node.get(ADDITIONAL_INFORMATION).equals("true")) {
 			AdditionalInformation info = new AdditionalInformation(node);
 			info.run();
 		}
@@ -314,11 +321,11 @@ public class OsmoseInformation extends GenericInformation {
 	@Override
 	public String getNodeToolTip(Node node) {
 		StringBuilder sb = new StringBuilder("<html>");
-		sb.append(tr("Osmose"))
+		sb.append(tr(NAME))
 		  .append(": ").append(node.get("title"))
 		  .append(" - <a href=")
-		  .append(baseErrorUrl + node.get("error_id"))
-		  .append(">").append(node.get("error_id"))
+		  .append(BASE_ERROR_URL + node.get(ERROR_ID))
+		  .append(">").append(node.get(ERROR_ID))
 		  .append("</a>");
 
 		sb.append("<hr/>");
@@ -373,22 +380,27 @@ public class OsmoseInformation extends GenericInformation {
 
 	@Override
 	public List<JButton> getActions(Node node) {
-		final String apiUrl = baseApi + "error/" + node.get("error_id") + "/";
+		final String apiUrl = BASE_API + "error/" + node.get(ERROR_ID) + "/";
 
 		JButton fixed = new JButton();
 		JButton falsePositive = new JButton();
+
+		String sTrue = "true";
+		String sFalse = "false";
+		String actionTaken = "actionTaken";
+
 		fixed.setAction(new AbstractAction() {
 			private static final long serialVersionUID = 3020815442282939509L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				new SendInformation(apiUrl.concat("done"), CACHE_DIR).run();
-				node.put("actionTaken", "true");
+				new SendInformation(apiUrl.concat("done"), cacheDir).run();
+				node.put(actionTaken, sTrue);
 				fixed.setEnabled(false);
 				falsePositive.setEnabled(true);
 				node.put("item", "fixed");
 				redrawErrorLayers(tr(LAYER_NAME));
-				addChangeSetTag("osmose", node.get("error_id"));
+				addChangeSetTag("osmose", node.get(ERROR_ID));
 			}
 		});
 
@@ -397,8 +409,8 @@ public class OsmoseInformation extends GenericInformation {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				new SendInformation(apiUrl.concat("false"), CACHE_DIR).run();
-				node.put("actionTaken", "false");
+				new SendInformation(apiUrl.concat(sFalse), cacheDir).run();
+				node.put(actionTaken, sFalse);
 				fixed.setEnabled(true);
 				falsePositive.setEnabled(false);
 				node.put("item", "falsePositive");
@@ -408,11 +420,11 @@ public class OsmoseInformation extends GenericInformation {
 
 		fixed.setText(tr("Fixed"));
 		falsePositive.setText(tr("False Positive"));
-		if (node.hasKey("actionTaken")) {
-			if ("true".equals(node.get("actionTaken"))) {
+		if (node.hasKey(actionTaken)) {
+			if (sTrue.equals(node.get(actionTaken))) {
 				fixed.setEnabled(false);
 				falsePositive.setEnabled(true);
-			} else if ("false".equals(node.get("actionTaken"))) {
+			} else if (sFalse.equals(node.get(actionTaken))) {
 				fixed.setEnabled(true);
 				falsePositive.setEnabled(false);
 			}
@@ -433,8 +445,8 @@ public class OsmoseInformation extends GenericInformation {
 			} else if ("falsePositive".equals(errorValue)) {
 				icon = ImageProvider.get("dialogs/notes", "note_comment", size);
 			} else {
-				CachedFile image = GenericInformation.getFile(String.format(baseImg, errorValue), "image/*", new File(CACHE_DIR, IMG_SUB_DIR).getCanonicalPath());
-				image.setMaxAge(30 * 86400);
+				CachedFile image = GenericInformation.getFile(String.format(BASE_IMG, errorValue), "image/*", new File(cacheDir, IMG_SUB_DIR).getCanonicalPath());
+				image.setMaxAge(30 * (long) 86400);
 				image.getFile();
 				icon = ImageProvider.get(image.getFile().getAbsolutePath());
 				icon = new ImageIcon(ImageProvider.createBoundedImage(icon.getImage(), size.getAdjustedHeight()));
@@ -458,6 +470,26 @@ public class OsmoseInformation extends GenericInformation {
 
 	@Override
 	public String getCacheDir() {
-		return this.CACHE_DIR;
+		return this.cacheDir;
+	}
+
+	@Override
+	public String getBaseApi() {
+		return BASE_API;
+	}
+
+	@Override
+	public String getBaseImg() {
+		return BASE_IMG;
+	}
+
+	@Override
+	public String getBaseErrorUrl() {
+		return BASE_ERROR_URL;
+	}
+
+	@Override
+	public SortedMap<String, String> getErrors() {
+		return getErrors(getCacheDir());
 	}
 }

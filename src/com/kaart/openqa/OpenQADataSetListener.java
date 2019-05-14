@@ -25,10 +25,10 @@ public class OpenQADataSetListener implements DataSetListener {
 
 	private List<Bounds> bounds;
 
-	private final String CACHE_DIR;
+	private final String cacheDir;
 
-	public OpenQADataSetListener(String CACHE_DIR) {
-		this.CACHE_DIR = CACHE_DIR;
+	public OpenQADataSetListener(String cacheDir) {
+		this.cacheDir = cacheDir;
 	}
 	/* (non-Javadoc)
 	 * @see org.openstreetmap.josm.data.osm.event.DataSetListener#dataChanged(org.openstreetmap.josm.data.osm.event.DataChangedEvent)
@@ -39,7 +39,7 @@ public class OpenQADataSetListener implements DataSetListener {
 		List<ErrorLayer> layers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
 		if (!layers.isEmpty() && (bounds == null || !bounds.containsAll(tBounds))) {
 			bounds = tBounds;
-			OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
+			OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
 		}
 	}
 

@@ -22,7 +22,7 @@ import org.openstreetmap.josm.tools.Logging;
  */
 public class OpenQA extends Plugin {
 	public static final String NAME = "OpenQA";
-	public String CACHE_DIR;
+	public String cacheDir;
 	public static final String PREF_PREFIX = NAME.toLowerCase().concat(".");
 	public static final String PREF_FILETYPE = PREF_PREFIX.concat("filetype");
 
@@ -31,12 +31,12 @@ public class OpenQA extends Plugin {
 	public OpenQA(PluginInformation info) {
 		super(info);
 		try {
-			CACHE_DIR = getPluginDirs().getCacheDirectory(true).getCanonicalPath();
+			cacheDir = getPluginDirs().getCacheDirectory(true).getCanonicalPath();
 		} catch (IOException e) {
-			CACHE_DIR = "openqa";
+			cacheDir = "openqa";
 			Logging.debug(e.getMessage());
 		}
-		MainApplication.getLayerManager().addLayerChangeListener(new OpenQALayerChangeListener(CACHE_DIR));
+		MainApplication.getLayerManager().addLayerChangeListener(new OpenQALayerChangeListener(cacheDir));
 		if (Config.getPref().get(PREF_FILETYPE).equals("")) {
 			Config.getPref().put(PREF_FILETYPE, "geojson");
 		}
@@ -46,7 +46,7 @@ public class OpenQA extends Plugin {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
+				OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
 			}
 		};
 		MainApplication.getMenu().dataMenu.add(openqaAction);
@@ -54,7 +54,7 @@ public class OpenQA extends Plugin {
 
 	@Override
 	public PreferenceSetting getPreferenceSetting() {
-		OpenQAPreferences openQA = new OpenQAPreferences(CACHE_DIR);
+		OpenQAPreferences openQA = new OpenQAPreferences(cacheDir);
 		return openQA;
 	}
 

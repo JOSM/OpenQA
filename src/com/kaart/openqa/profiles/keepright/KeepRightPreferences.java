@@ -31,12 +31,12 @@ public class KeepRightPreferences extends ProfilePreferences {
 
 	JPanel testPanel;
 
-	final String CACHE_DIR;
-	final static String PREF_TESTS = "openqa.keepright-tests";
+	final String cacheDir;
+	static final String PREF_TESTS = "openqa.keepright-tests";
 
 	public KeepRightPreferences(String directory) {
 		super(OpenQA.OPENQA_IMAGE, tr("Keep Right"), tr("Keep Right Settings"));
-		CACHE_DIR = directory;
+		cacheDir = directory;
 	}
 
 	@Override
@@ -48,16 +48,17 @@ public class KeepRightPreferences extends ProfilePreferences {
 	public boolean ok() {
 		ArrayList<String> prefs = new ArrayList<>();
 		prefs.add("0");
-		ArrayList<String> values = new ArrayList<String>(KeepRightInformation.errors.keySet());
+		ArrayList<String> values = new ArrayList<>(KeepRightInformation.errors.keySet());
 		for (Component component : testPanel.getComponents()) {
 			if (!(component instanceof JCheckBox)) continue;
 			JCheckBox preference = (JCheckBox) component;
 			if (preference.isSelected()) {
 				String[] parts = preference.getText().split("/");
 				for (String value : values) {
+					boolean toBreak = false;
 					if (parts.length == 1 && KeepRightInformation.errors.get(value).equals(parts[0])) {
 						prefs.add(value);
-						break;
+						toBreak = true;
 					} else if (parts.length == 2 && KeepRightInformation.errors.get(value).equals(parts[0])){
 						for (int i = 0; i < 10; i++) {
 							String toGet = Integer.toString(Integer.parseInt(value) + i);
@@ -66,8 +67,9 @@ public class KeepRightPreferences extends ProfilePreferences {
 								break;
 							}
 						}
-						break;
+						toBreak = true;
 					}
+					if (toBreak) break;
 				}
 			}
 		}
@@ -83,7 +85,7 @@ public class KeepRightPreferences extends ProfilePreferences {
 	@Override
 	public Component createSubTab() {
 		testPanel = new VerticallyScrollablePanel(new GridBagLayout());
-		KeepRightInformation info = new KeepRightInformation(CACHE_DIR);
+		KeepRightInformation info = new KeepRightInformation(cacheDir);
 		ArrayList<String> prefs = new ArrayList<>(Config.getPref().getList(PREF_TESTS, info.buildDefaultPref()));
 		for (String error : KeepRightInformation.errors.keySet()) {
 			if ("0".equals(error)) continue;
@@ -101,7 +103,7 @@ public class KeepRightPreferences extends ProfilePreferences {
 				errorMessage += "/" + KeepRightInformation.errors.get(error);
 			}
 			JCheckBox toAdd = new JCheckBox(tr(errorMessage), checked);
-			List<JCheckBox> list = (checkBoxes.get(baseMessage) != null) ? checkBoxes.get(baseMessage) : new ArrayList<JCheckBox>();
+			List<JCheckBox> list = (checkBoxes.get(baseMessage) != null) ? checkBoxes.get(baseMessage) : new ArrayList<>();
 			list.add(toAdd);
 			checkBoxes.put(baseMessage, list);
 			testPanel.add(toAdd, GBC.eol());

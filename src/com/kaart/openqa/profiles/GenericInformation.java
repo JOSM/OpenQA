@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.SortedMap;
 import java.util.TreeSet;
 
 import javax.swing.ImageIcon;
@@ -42,31 +42,32 @@ import com.kaart.openqa.OpenQA;
  *
  */
 public abstract class GenericInformation {
-	/** The API URL, usually something like https://www.example.org/api/0.2 */
-	public static String baseApi;
-	/** The base URL for images */
-	public static String baseImg;
-	/** The base URL for error data or error manipulation */
-	public static String baseErrorUrl;
-	/** The possible errors for the class {@code TreeMap<Integer errorValue, String description>} */
-	public static TreeMap<String, String> errors;
-	/** The layer name */
-	protected String LAYER_NAME = "FIXME";
-
 	/** The subdirectory to store the data. This can be deleted at any time. */
-	public static String DATA_SUB_DIR = "data";
+	public static final String DATA_SUB_DIR = "data";
 	/** The subdirectory to store the images. This is usually not deleted. */
-	public static String IMG_SUB_DIR = "img";
+	public static final String IMG_SUB_DIR = "img";
+
+	/** The key to store unique the error id */
+	public static final String ERROR_ID = "error_id";
 
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
 
-	protected String CACHE_DIR;
-	public GenericInformation(String CACHE_DIR) {
-		this.CACHE_DIR = CACHE_DIR;
+	protected String cacheDir;
+	public GenericInformation(String cacheDir) {
+		this.cacheDir = cacheDir;
 	}
 
+	/** The layer name */
 	public abstract String getName();
+	/** The API URL, usually something like https://www.example.org/api/0.2 */
+	public abstract String getBaseApi();
+	/** The base URL for images */
+	public abstract String getBaseImg();
+	/** The base URL for error data or error manipulation */
+	public abstract String getBaseErrorUrl();
+	/** The possible errors for the class {@code SortedMap<Integer errorValue, String description>} */
+	public abstract SortedMap<String, String> getErrors();
 
 	/**
 	 * Cache a file for 24 hours
@@ -193,7 +194,7 @@ public abstract class GenericInformation {
 	 * Build an {@code ArrayList<String>} of default preferences
 	 * @return An {@code ArrayList<String>} of default preferences
 	 */
-	public abstract ArrayList<String> buildDefaultPref();
+	public abstract List<String> buildDefaultPref();
 
 	/**
 	 * Get the tooltip for a node
@@ -213,12 +214,12 @@ public abstract class GenericInformation {
 
 	/**
 	 * Get a username from an {@code OsmPrimitiveId} as a {@code Long}
-	 * @param obj_id The id to find in the dataset
+	 * @param objId The id to find in the dataset
 	 * @return The username
 	 */
-	protected static String getUserName(long obj_id) {
+	protected static String getUserName(long objId) {
 		OsmPrimitive osm = new Node();
-		osm.setOsmId(obj_id, 1);
+		osm.setOsmId(objId, 1);
 		ArrayList<OsmDataLayer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class));
 		for (OsmDataLayer layer : layers) {
 			OsmPrimitive rosm = layer.data.getPrimitiveById(osm.getOsmPrimitiveId());
@@ -292,9 +293,9 @@ public abstract class GenericInformation {
 		final String url;
 		final String directory;
 
-		public SendInformation(String url, String CACHE_DIR) {
+		public SendInformation(String url, String cacheDir) {
 			this.url = url;
-			directory = CACHE_DIR;
+			directory = cacheDir;
 		}
 
 		@Override
@@ -303,7 +304,6 @@ public abstract class GenericInformation {
 				File dir = new File(directory, DATA_SUB_DIR);
 				cache.setDestDir(dir.getPath());
 				cache.getFile();
-				cache.close();
 				cache.clear();
 			} catch (IOException e) {
 				Logging.debug(e.getMessage());

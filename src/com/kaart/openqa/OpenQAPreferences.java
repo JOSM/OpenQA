@@ -5,11 +5,9 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.GridBagLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -33,13 +31,13 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 
 	JPanel testPanel;
 
-	final String CACHE_DIR;
+	final String cacheDir;
 
 	ArrayList<ProfilePreferences> tests = new ArrayList<>();
 
 	public OpenQAPreferences(String directory) {
 		super(OpenQA.OPENQA_IMAGE, tr("OpenQA"), tr("OpenQA Settings"));
-		CACHE_DIR = directory;
+		cacheDir = directory;
 	}
 
 	@Override
@@ -47,25 +45,15 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 		testPanel = new JPanel();
 		testPanel.setLayout(new BorderLayout());
 		JTabbedPane tp = new JTabbedPane();
-		tests.add(new KeepRightPreferences(CACHE_DIR));
-		tests.add(new OsmosePreferences(CACHE_DIR));
+		tests.add(new KeepRightPreferences(cacheDir));
+		tests.add(new OsmosePreferences(cacheDir));
 		for (ProfilePreferences preference : tests) {
 			Component subTab = preference.createSubTab();
 			JButton selectAll = new JButton(tr("Select all"));
-			selectAll.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					toggleBoxes(preference, true);
-				}
-			});
+			selectAll.addActionListener(e -> toggleBoxes(preference, true));
 
 			JButton selectNone = new JButton(tr("Select none"));
-			selectNone.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					toggleBoxes(preference, false);
-				}
-			});
+			selectNone.addActionListener(e -> toggleBoxes(preference, false));
 			JPanel tPanel = new VerticallyScrollablePanel(new GridBagLayout());
 			tPanel.add(selectAll);
 			tPanel.add(selectNone, GBC.eol());
@@ -78,7 +66,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 	}
 
 	private void toggleBoxes(ProfilePreferences preference, boolean checked) {
-		HashMap<String, List<JCheckBox>> boxes = preference.getCheckBoxes();
+		Map<String, List<JCheckBox>> boxes = preference.getCheckBoxes();
 		for (List<JCheckBox> boxList : boxes.values()) {
 			for (JCheckBox checkBox : boxList) {
 				checkBox.setSelected(checked);
@@ -94,7 +82,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 			boolean nok = preference.ok();
 			if (!ok) ok = nok;
 		}
-		OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
+		OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
 		return ok;
 	}
 

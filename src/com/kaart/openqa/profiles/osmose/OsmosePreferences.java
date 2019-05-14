@@ -9,7 +9,8 @@ import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeMap;
+import java.util.Map.Entry;
+import java.util.SortedMap;
 
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
@@ -33,12 +34,12 @@ import com.kaart.openqa.profiles.ProfilePreferences;
 public class OsmosePreferences extends ProfilePreferences {
 	JPanel testPanel;
 
-	final String CACHE_DIR;
-	final static String PREF_TESTS = "openqa.osmose-tests";
+	final String cacheDir;
+	static final String PREF_TESTS = "openqa.osmose-tests";
 
 	public OsmosePreferences(String directory) {
 		super(OpenQA.OPENQA_IMAGE, tr("Osmose"), tr("osmose Settings"));
-		CACHE_DIR = directory;
+		cacheDir = directory;
 	}
 
 	@Override
@@ -49,27 +50,28 @@ public class OsmosePreferences extends ProfilePreferences {
 	@Override
 	public boolean ok() {
 		ArrayList<String> prefs = new ArrayList<>();
-		TreeMap<String, TreeMap<String, TreeMap<String, String>>> categories = OsmoseInformation.getCategories(CACHE_DIR);
-		TreeMap<String, String> errors = categories.get(categories.firstKey()).firstEntry().getValue();
-		String category = categories.get(categories.firstKey()).firstKey();
+		SortedMap<String, SortedMap<String, SortedMap<String, String>>> categories = OsmoseInformation.getCategories(cacheDir);
+		String initialKey = categories.get(categories.firstKey()).firstKey();
+		SortedMap<String, String> errors = categories.get(categories.firstKey()).get(initialKey);
+		String category = "";
 		for (Component component : testPanel.getComponents()) {
 			if (component instanceof JLabel) {
 				JLabel label = (JLabel) component;
 				category = label.getText();
-				for (TreeMap<String, TreeMap<String, String>> descriptiveCategory : categories.values()) {
+				for (SortedMap<String, SortedMap<String, String>> descriptiveCategory : categories.values()) {
 					if (descriptiveCategory.keySet().contains(category)) {
 						errors = descriptiveCategory.get(category);
 						Logging.info("Category: {0}", category);
 						break;
 					}
 				}
-				continue;
-			} else if (!(component instanceof JCheckBox)) continue;
+			}
+			if (!(component instanceof JCheckBox) || (component instanceof JLabel)) continue;
 			JCheckBox preference = (JCheckBox) component;
 			if (preference.isSelected()) {
-				for (String key : errors.keySet()) {
-					if (preference.getText().equals(errors.get(key))) {
-						prefs.add(key);
+				for (Entry<String, String> entry : errors.entrySet()) {
+					if (preference.getText().equals(entry.getValue())) {
+						prefs.add(entry.getKey());
 						break;
 					}
 				}
@@ -87,11 +89,12 @@ public class OsmosePreferences extends ProfilePreferences {
 	@Override
 	public Component createSubTab() {
 		testPanel = new VerticallyScrollablePanel(new GridBagLayout());
-		OsmoseInformation info = new OsmoseInformation(CACHE_DIR);
+		OsmoseInformation info = new OsmoseInformation(cacheDir);
 		ArrayList<String> prefs = new ArrayList<>(Config.getPref().getList(PREF_TESTS, info.buildDefaultPref()));
-		TreeMap<String, TreeMap<String, TreeMap<String, String>>> errors = OsmoseInformation.getCategories(CACHE_DIR);
-		for (String categoryNumber : errors.keySet()) {
-			for (String category : errors.get(categoryNumber).keySet()) {
+		SortedMap<String, SortedMap<String, SortedMap<String, String>>> errors = OsmoseInformation.getCategories(cacheDir);
+		for (Entry<String, SortedMap<String, SortedMap<String, String>>> entry : errors.entrySet()) {
+			String categoryNumber = entry.getKey();
+			for (String category : entry.getValue().keySet()) {
 				JLabel label = new JLabel(category);
 				testPanel.add(label, GBC.eol());
 				Logging.info("Category: {0} {1}", category, categoryNumber);
@@ -103,7 +106,7 @@ public class OsmosePreferences extends ProfilePreferences {
 					}
 					String errorMessage = errors.get(categoryNumber).get(category).get(errorNumber);
 					JCheckBox toAdd = new JCheckBox(tr(errorMessage), checked);
-					List<JCheckBox> list = (checkBoxes.get(baseMessage) != null) ? checkBoxes.get(baseMessage) : new ArrayList<JCheckBox>();
+					List<JCheckBox> list = (checkBoxes.get(baseMessage) != null) ? checkBoxes.get(baseMessage) : new ArrayList<>();
 					list.add(toAdd);
 					checkBoxes.put(baseMessage, list);
 					testPanel.add(toAdd, GBC.eol());

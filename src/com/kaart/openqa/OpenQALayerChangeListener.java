@@ -32,11 +32,11 @@ import com.kaart.openqa.profiles.osmose.OsmoseInformation;
  */
 public class OpenQALayerChangeListener implements LayerChangeListener {
 	HashMap<OsmDataLayer, OpenQADataSetListener> listeners = new HashMap<>();
-	private final String CACHE_DIR;
+	private final String cacheDir;
 
-	public OpenQALayerChangeListener(String CACHE_DIR) {
+	public OpenQALayerChangeListener(String cacheDir) {
 		super();
-		this.CACHE_DIR = CACHE_DIR;
+		this.cacheDir = cacheDir;
 	}
 
 	/**
@@ -52,17 +52,18 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 				try {
 					TimeUnit.SECONDS.sleep(1);
 				} catch (InterruptedException e1) {
+					Thread.currentThread().interrupt();
 					Logging.debug(e1.getMessage());
 				}
 				time++;
 			}
 
-			OpenQADataSetListener listener = new OpenQADataSetListener(CACHE_DIR);
+			OpenQADataSetListener listener = new OpenQADataSetListener(cacheDir);
 			layer.data.addDataSetListener(listener);
 			listeners.put(layer, listener);
 			List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
 			if (!errorLayers.isEmpty()) {
-				updateOpenQALayers(CACHE_DIR);
+				updateOpenQALayers(cacheDir);
 			}
 		}
 	}
@@ -91,12 +92,12 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 
 	private static class UpdateLayersTask extends PleaseWaitRunnable {
 		private boolean isCanceled;
-		String CACHE_DIR;
+		String cacheDir;
 		ErrorLayer layer;
 
 		public UpdateLayersTask(String cacheDir, PleaseWaitProgressMonitor monitor) {
 			this(tr("Update {0} Layers", OpenQA.NAME), monitor, true);
-			CACHE_DIR = cacheDir;
+			this.cacheDir = cacheDir;
 		}
 		public UpdateLayersTask(String title, ProgressMonitor progressMonitor, boolean ignoreException) {
 			super(title, progressMonitor, ignoreException);
@@ -114,7 +115,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
 			List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
 			layer = null;
 			if (errorLayers.isEmpty()) {
-				layer = new ErrorLayer(CACHE_DIR);
+				layer = new ErrorLayer(cacheDir);
 				layer.setErrorClasses(KeepRightInformation.class, OsmoseInformation.class);
 				MainApplication.getLayerManager().addLayer(layer);
 			} else {

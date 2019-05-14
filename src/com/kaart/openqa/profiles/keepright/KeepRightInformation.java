@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedMap;
 import java.util.TreeMap;
 
 import javax.swing.AbstractAction;
@@ -39,16 +40,16 @@ import com.kaart.openqa.profiles.GenericInformation;
  */
 public class KeepRightInformation extends GenericInformation {
 	public static final String LAYER_NAME = "Keep Right Errors";
-	public static String baseApi = "https://www.keepright.at/export.php?";
-	public static String baseImg = "https://www.keepright.at/img/%s.png";
-	public static String baseErrorUrl = "https://www.keepright.at/report_map.php?schema=%s&error=%s";
+	public static final String BASE_API = "https://www.keepright.at/export.php?";
+	public static final String BASE_IMG = "https://www.keepright.at/img/%s.png";
+	public static final String BASE_ERROR_URL = "https://www.keepright.at/report_map.php?schema=%s&error=%s";
 
-	public static String commentUrl = "https://www.keepright.at/comment.php?st=%s&co=%s&schema=%s&id=%s";
-	public static String FIXED = "ignore_t";
-	public static String FALSE_POSITIVE = "ignore";
+	public static final String COMMENT_URL = "https://www.keepright.at/comment.php?st=%s&co=%s&schema=%s&id=%s";
+	public static final String FIXED = "ignore_t";
+	public static final String FALSE_POSITIVE = "ignore";
 
-	public static TreeMap<String, String> formats = new TreeMap<>();
-	public static TreeMap<String, String> errors = new TreeMap<>();
+	protected static SortedMap<String, String> formats = new TreeMap<>();
+	protected static SortedMap<String, String> errors = new TreeMap<>();
 	static {
 		errors.put("0", tr("default"));
 		errors.put("20", tr("multiple nodes on the same spot"));
@@ -143,8 +144,8 @@ public class KeepRightInformation extends GenericInformation {
 	/** the difference between groups (integer numbers) */
 	public static final int GROUP_DIFFERENCE = 10;
 
-	public KeepRightInformation(String CACHE_DIR) {
-		super(CACHE_DIR);
+	public KeepRightInformation(String cacheDir) {
+		super(cacheDir);
 	}
 
 	@Override
@@ -154,17 +155,17 @@ public class KeepRightInformation extends GenericInformation {
 
 	private CachedFile getFile(String type, Bounds bound) {
 		String enabled = buildDownloadErrorList();
-		String url = baseApi + "format=" + type + "&ch=" + enabled;
+		String url = BASE_API + "format=" + type + "&ch=" + enabled;
 		url += "&left=" + Double.toString(bound.getMinLon());
 		url += "&bottom=" + Double.toString(bound.getMinLat());
 		url += "&right=" + Double.toString(bound.getMaxLon());
 		url += "&top=" + Double.toString(bound.getMaxLat());
 		CachedFile cache;
 		try {
-			cache = GenericInformation.getFile(url, formats.get(type), new File(CACHE_DIR, DATA_SUB_DIR).getCanonicalPath());
+			cache = GenericInformation.getFile(url, formats.get(type), new File(cacheDir, DATA_SUB_DIR).getCanonicalPath());
 		} catch (IOException e) {
 			Logging.error(e);
-			cache = GenericInformation.getFile(url, formats.get(type), CACHE_DIR);
+			cache = GenericInformation.getFile(url, formats.get(type), cacheDir);
 		}
 		cache.setDeleteOnExit(true);
 		return cache;
@@ -176,7 +177,7 @@ public class KeepRightInformation extends GenericInformation {
 		try {
 			ds = GeoJsonReader.parseDataSet(cache.getInputStream(), null);
 			for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
-				osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get("error_id")), 1);
+				osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get(ERROR_ID)), 1);
 			}
 		} catch (IllegalDataException | IOException e) {
 			Logging.error(e);
@@ -200,12 +201,10 @@ public class KeepRightInformation extends GenericInformation {
 		for (Bounds bound : bounds) {
 			if (monitor.isCanceled()) break;
 			DataSet ds = getGeoJsonErrors(bound);
-			if (ds != null) {
-				if (returnDataSet == null) {
-					returnDataSet = ds;
-				} else {
-					returnDataSet.mergeFrom(ds, monitor.createSubTaskMonitor(1, false));
-				}
+			if (returnDataSet == null) {
+				returnDataSet = ds;
+			} else {
+				returnDataSet.mergeFrom(ds, monitor.createSubTaskMonitor(1, false));
 			}
 		}
 		monitor.finishTask();
@@ -222,8 +221,8 @@ public class KeepRightInformation extends GenericInformation {
 				realErrorValue = errorValue;
 				Logging.debug(e.getMessage());
 			}
-			CachedFile image = GenericInformation.getFile(String.format(baseImg, realErrorValue), "image/*", new File(CACHE_DIR, IMG_SUB_DIR).getCanonicalPath());
-			image.setMaxAge(30 * 86400);
+			CachedFile image = GenericInformation.getFile(String.format(BASE_IMG, realErrorValue), "image/*", new File(cacheDir, IMG_SUB_DIR).getCanonicalPath());
+			image.setMaxAge(30 * (long) 86400);
 			image.getFile();
 			ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath(), size);
 			image.close();
@@ -235,15 +234,15 @@ public class KeepRightInformation extends GenericInformation {
 
 	@Override
 	public String buildDownloadErrorList() {
-		String list = "";
+		StringBuilder list = new StringBuilder();
 		List<String> enabled = Config.getPref().getList(OpenQA.PREF_PREFIX.concat(getName().toLowerCase()).concat("-tests"), buildDefaultPref());
 		for (int i = 0; i < enabled.size(); i++) {
-			list += enabled.get(i);
+			list.append(enabled.get(i));
 			if (i < enabled.size() - 1) {
-				list += ",";
+				list.append(",");
 			}
 		}
-		return list;
+		return list.toString();
 	}
 
 	@Override
@@ -259,8 +258,8 @@ public class KeepRightInformation extends GenericInformation {
 		sb.append(tr(getName()))
 		  .append(": ").append(node.get("title"))
 		  .append(" - <a href=")
-		  .append(String.format(baseErrorUrl, node.get("schema"), node.get("error_id")))
-		  .append(">").append(node.get("error_id"))
+		  .append(String.format(BASE_ERROR_URL, node.get("schema"), node.get(ERROR_ID)))
+		  .append(">").append(node.get(ERROR_ID))
 		  .append("</a>");
 
 		sb.append("<hr/>");
@@ -292,13 +291,13 @@ public class KeepRightInformation extends GenericInformation {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				new SendInformation(String.format(commentUrl, FIXED, "", node.get("schema"), node.get("error_id")), CACHE_DIR).run();
+				new SendInformation(String.format(COMMENT_URL, FIXED, "", node.get("schema"), node.get(ERROR_ID)), cacheDir).run();
 				node.put("actionTaken", "true");
 				fixed.setEnabled(false);
 				falsePositive.setEnabled(true);
 				node.put("error_type", "zapangel");
 				redrawErrorLayers(tr(LAYER_NAME));
-				addChangeSetTag(getName().toLowerCase(), node.get("error_id"));
+				addChangeSetTag(getName().toLowerCase(), node.get(ERROR_ID));
 			}
 		});
 
@@ -307,7 +306,7 @@ public class KeepRightInformation extends GenericInformation {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				new SendInformation(String.format(commentUrl, FALSE_POSITIVE, "", node.get("schema"), node.get("error_id")), CACHE_DIR).run();
+				new SendInformation(String.format(COMMENT_URL, FALSE_POSITIVE, "", node.get("schema"), node.get(ERROR_ID)), cacheDir).run();
 				node.put("actionTaken", "false");
 				fixed.setEnabled(true);
 				falsePositive.setEnabled(false);
@@ -346,6 +345,26 @@ public class KeepRightInformation extends GenericInformation {
 
 	@Override
 	public String getCacheDir() {
-		return this.CACHE_DIR;
+		return cacheDir;
+	}
+
+	@Override
+	public String getBaseApi() {
+		return BASE_API;
+	}
+
+	@Override
+	public String getBaseImg() {
+		return BASE_IMG;
+	}
+
+	@Override
+	public String getBaseErrorUrl() {
+		return BASE_ERROR_URL;
+	}
+
+	@Override
+	public SortedMap<String, String> getErrors() {
+		return errors;
 	}
 }

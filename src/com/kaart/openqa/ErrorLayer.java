@@ -19,6 +19,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
@@ -55,6 +57,7 @@ import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.AbstractModifiableLayer;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.gui.progress.NullProgressMonitor;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.gui.widgets.HtmlPanel;
 import org.openstreetmap.josm.spi.preferences.Config;
@@ -94,7 +97,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	ArrayList<Node> previousNodes;
 
-	final String CACHE_DIR;
+	final String cacheDir;
 
 	EastNorth lastClick;
 
@@ -102,11 +105,11 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	/**
 	 * Create a new ErrorLayer using a class that extends {@code GenericInformation}
-	 * @param CACHE_DIR The directory where cache files are stored
+	 * @param cacheDir The directory where cache files are stored
 	 */
-	public ErrorLayer(String CACHE_DIR) {
+	public ErrorLayer(String cacheDir) {
 		super(tr("{0} Layers", OpenQA.NAME));
-		this.CACHE_DIR = CACHE_DIR;
+		this.cacheDir = cacheDir;
 		hookUpMapViewer();
 	}
 
@@ -119,7 +122,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			if (!GenericInformation.class.isAssignableFrom(type)) continue;
 			try {
 				Constructor<?> constructor = type.getConstructor(String.class);
-				Object obj = constructor.newInstance(CACHE_DIR);
+				Object obj = constructor.newInstance(cacheDir);
 				if (!(obj instanceof GenericInformation)) continue;
 				GenericInformation info = (GenericInformation) obj;
 				dataSets.put(info, new DataSet());
@@ -137,18 +140,24 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		updateCanceled = true;
 	}
 
+	/**
+	 * Update the backing information data stores
+	 * @param monitor The monitor to show updates with. Can be null.
+	 */
 	public void update(ProgressMonitor monitor) {
+		if (monitor == null) monitor = NullProgressMonitor.INSTANCE;
 		List<OsmDataLayer> dataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
 		ProgressMonitor progressMonitor = monitor.createSubTaskMonitor(0, false);
 		progressMonitor.beginTask(tr("Updating {0} layers", OpenQA.NAME));
-		for (GenericInformation type : dataSets.keySet()) {
+		for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
 			if (updateCanceled) {
 				progressMonitor.cancel();
 				break;
 			}
 			for (OsmDataLayer layer : dataLayers) {
 				if (updateCanceled) break;
-				DataSet ds = dataSets.get(type);
+				DataSet ds = entry.getValue();
+				GenericInformation type = entry.getKey();
 				progressMonitor.indeterminateSubTask(tr("Updating {0}", type.getLayerName()));
 				if (ds == null || ds.allPrimitives().isEmpty()) {
 					ds = type.getErrors(layer.getDataSet(), progressMonitor);
@@ -208,9 +217,10 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	 * @return true if added
 	 */
 	public boolean addNotes(GenericInformation type, DataSet newDataSet) {
-		for (GenericInformation currentType : dataSets.keySet()) {
+		for (Map.Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+			GenericInformation currentType = entry.getKey();
 			if (currentType.getClass().equals(type.getClass())) {
-				dataSets.get(currentType).mergeFrom(newDataSet);
+				entry.getValue().mergeFrom(newDataSet);
 				break;
 			}
 		}
@@ -232,7 +242,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	@Override
 	public void paint(Graphics2D g, MapView mv, Bounds bbox) {
 		if (window == null) {
-			window = new PaintWindow(g, mv, bbox);
+			window = new PaintWindow(g, mv);
 		} else {
 			window.setGraphics2d(g);
 			window.setMapView(mv);
@@ -244,7 +254,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		Graphics2D g;
 		MapView mv;
 
-		public PaintWindow(Graphics2D g, MapView mv, Bounds bbox) {
+		public PaintWindow(Graphics2D g, MapView mv) {
 			this.g = g;
 			this.mv = mv;
 		}
@@ -283,13 +293,13 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		private void createNodeWindow(Graphics2D g, MapView mv, ImageSizes size) {
 			HashMap<GenericInformation, ArrayList<Node>> selectedErrors = new HashMap<>();
 
-			for (GenericInformation type : dataSets.keySet()) {
-				DataSet ds = dataSets.get(type);
+			for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+				DataSet ds = entry.getValue();
 				if (ds == null) continue;
 				ArrayList<Node> selectedNodes = new ArrayList<>(ds.getSelectedNodes());
 				selectedNodes.sort(null);
 				if (!selectedNodes.isEmpty()) {
-					selectedErrors.put(type, selectedNodes);
+					selectedErrors.put(entry.getKey(), selectedNodes);
 				}
 			}
 			MapMode mode = MainApplication.getMap().mapMode;
@@ -317,8 +327,8 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 			double averageEast = 0.0;
 			double averageNorth = 0.0;
 			int number = 0;
-			for (GenericInformation type : selectedErrors.keySet()) {
-				for (Node node : selectedErrors.get(type)) {
+			for (List<Node> nodes : selectedErrors.values()) {
+				for (Node node : nodes) {
 					number++;
 					EastNorth ten = node.getEastNorth();
 					averageEast += ten.east();
@@ -348,8 +358,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 				displayedWindow.addMouseWheelListener(e -> mv.getMapMover().mouseWheelMoved(
 						(MouseWheelEvent) SwingUtilities.convertMouseEvent(displayedWindow, e, mv)));
 			}
-			for (GenericInformation type : dataSets.keySet()) {
-				DataSet temporaryDataSet = dataSets.get(type);
+			for (Map.Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+				DataSet temporaryDataSet = entry.getValue();
+				GenericInformation type = entry.getKey();
 				if (temporaryDataSet == null) continue;
 				for (OsmPrimitive osmPrimitive : temporaryDataSet.getSelected()) {
 					if (!(osmPrimitive instanceof Node)) continue;
@@ -506,8 +517,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		 */
 		private HashMap<GenericInformation, ArrayList<Node>> getClosestNode(Point mousePoint, double snapDistance) {
 			HashMap<GenericInformation, ArrayList<Node>> closestNodes = new HashMap<>();
-			for (GenericInformation type : dataSets.keySet()) {
-				DataSet ds = dataSets.get(type);
+			for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+				GenericInformation type = entry.getKey();
+				DataSet ds = entry.getValue();
 				if (ds == null) continue;
 				ArrayList<Node> closestNode = new ArrayList<>();
 				for (Node node : ds.getNodes()) {
@@ -524,9 +536,10 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		}
 
 		private void getAdditionalInformation() {
-			for (GenericInformation type : dataSets.keySet()) {
+			for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
 				boolean hasAdditionalInformation = true;
-				DataSet ds = dataSets.get(type);
+				DataSet ds = entry.getValue();
+				GenericInformation type = entry.getKey();
 				if (ds == null) continue;
 				for (Node node : ds.getSelectedNodes()) {
 					hasAdditionalInformation = type.cacheAdditionalInformation(node);
@@ -538,27 +551,24 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		@Override
 		public void run() {
 			HashMap<GenericInformation, ArrayList<Node>> closestNode = getClosestNode(e.getPoint(), 10);
-			for (GenericInformation type : dataSets.keySet()) {
-				DataSet ds = dataSets.get(type);
-				if (ds == null) continue;
-				if (closestNode.containsKey(type)) {
-					ds.setSelected(closestNode.get(type));
-				} else {
-					ds.clearSelection();
-				}
-			}
-			for (GenericInformation type : dataSets.keySet()) {
-				if (!closestNode.containsKey(type)) {
-					DataSet ds = dataSets.get(type);
-					if (ds == null) continue;
-					ds.clearSelection();
+			for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+				GenericInformation type = entry.getKey();
+				DataSet ds = entry.getValue();
+				if (ds != null) {
+					if (closestNode.containsKey(type)) {
+						ds.setSelected(closestNode.get(type));
+					} else {
+						ds.clearSelection();
+					}
+					if (!closestNode.containsKey(type)) {
+						ds.clearSelection();
+					}
 				}
 			}
 			boolean gotNode = false;
 			if (displayedNode != null) {
 				for (DataSet ds : dataSets.values()) {
-					if (ds == null) continue;
-					if (ds.containsNode(displayedNode)) {
+					if (ds != null && ds.containsNode(displayedNode)) {
 						gotNode = true;
 						break;
 					}
@@ -588,7 +598,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
 	private class ToggleSource extends AbstractAction {
 		private static final long serialVersionUID = -3530922723120575358L;
-		private GenericInformation type;
+		private transient GenericInformation type;
 		public ToggleSource(GenericInformation type) {
 			this.type = type;
 			if (!enabledSources.get(type)) {
@@ -616,11 +626,11 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		}
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			File directory = new File(CACHE_DIR, GenericInformation.DATA_SUB_DIR);
+			File directory = new File(cacheDir, GenericInformation.DATA_SUB_DIR);
 			Utils.deleteDirectory(directory);
 			directory.mkdirs();
-			for (GenericInformation type : dataSets.keySet()) {
-				DataSet ds = dataSets.get(type);
+			for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+				DataSet ds = entry.getValue();
 				DataSet temporaryDataSet = new DataSet();
 				for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
 					if (osmPrimitive.hasKey("actionTaken")) {
@@ -630,9 +640,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 				}
 				ds.clear();
 				ds.mergeFrom(temporaryDataSet);
-				dataSets.put(type, ds);
+				dataSets.put(entry.getKey(), ds);
 			}
-			OpenQALayerChangeListener.updateOpenQALayers(CACHE_DIR);
+			OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
 		}
 
 	}
@@ -667,12 +677,13 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 	public void mergeFrom(Layer from) {
 		if (from instanceof ErrorLayer) {
 			ErrorLayer efrom = (ErrorLayer) from;
-			for (GenericInformation type : efrom.dataSets.keySet()) {
+			for (Entry<GenericInformation, DataSet> eEntry : efrom.dataSets.entrySet()) {
+				GenericInformation type = eEntry.getKey();
 				boolean merged = false;
-				for (GenericInformation current : dataSets.keySet()) {
+				for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+					GenericInformation current = entry.getKey();
 					if (type.getClass().equals(current.getClass())) {
-						DataSet ds = efrom.dataSets.get(type);
-						dataSets.get(current).mergeFrom(ds);
+						entry.getValue().mergeFrom(eEntry.getValue());
 						merged = true;
 						break;
 					}
@@ -737,9 +748,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 		for (OsmPrimitive osmPrimitive : e.getDataSet().allPrimitives()) {
 			if (osmPrimitive instanceof Node && (osmPrimitive.hasKey("actionTaken") || "false".equals(osmPrimitive.get("actionTaken")))) {
 				Node node = (Node) osmPrimitive;
-				for (GenericInformation type : dataSets.keySet()) {
-					if (!dataSets.get(type).containsNode(node)) continue;
-					type.getNodeToolTip(node);
+				for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+					if (!entry.getValue().containsNode(node)) continue;
+					entry.getKey().getNodeToolTip(node);
 					if (!osmPrimitive.hasKey("actionTaken")) {
 						osmPrimitive.put("actionTaken", "true");
 					}
