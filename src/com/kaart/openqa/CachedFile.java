@@ -173,8 +173,11 @@ public class CachedFile implements Closeable {
 	}
 
 	private void setDefaultHttpHeaders() {
-	    httpHeaders.putIfAbsent("User-Agent", "Josm/".concat(Version.getInstance().getVersionString())
-	            .concat("(").concat(System.getProperty("os.name")).concat(") OpenQA/").concat(OpenQA.getVersion()));
+		String userAgent = "Josm/".concat(Version.getInstance().getVersionString())
+				.concat("(").concat(System.getProperty("os.name")).concat(") OpenQA/").concat(OpenQA.getVersion());
+	            //.concat("(").concat(System.getProperty("os.name")).concat(") " + OpenQA.NAME + "/").concat(OpenQA.getVersion());
+		Logging.debug("User-Agent for OpenQA is ".concat(userAgent));
+	    httpHeaders.putIfAbsent("User-Agent", userAgent);
 	}
 
 	/**
