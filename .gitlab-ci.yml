@@ -72,7 +72,7 @@ assemble with java 13:
 build:
   stage: test
   script:
-  - ./gradlew build generatePot generateSnapshotUpdateSite --stacktrace
+  - ./gradlew build generateSnapshotUpdateSite --stacktrace
   artifacts:
     paths:
     - build
