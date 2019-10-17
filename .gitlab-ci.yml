@@ -77,9 +77,9 @@ build:
     paths:
     - build
     reports:
-      junit: build/test-results/test/TEST-*.xml
       codequality: build/reports/pmd/main.xml
       sast: build/reports/spotbugs/main.html
+      #junit: build/test-results/test/TEST-*.xml
   dependencies:
   - assemble
 
