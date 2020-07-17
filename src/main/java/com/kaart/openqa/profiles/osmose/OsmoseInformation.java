@@ -189,7 +189,7 @@ public class OsmoseInformation extends GenericInformation {
     /**
      * Get all the possible errors
      *
-     * @param cacheDir Directory to store error list file
+     * @param cacheDir Directory to store error defaultDownloadTypes file
      * @return SortedMap&lt;String errorNumber, String errorName&gt;
      */
     public static SortedMap<String, String> getErrors(String cacheDir) {
@@ -199,17 +199,20 @@ public class OsmoseInformation extends GenericInformation {
             JsonParser parser = Json.createParser(cache.getInputStream());
             while (parser.hasNext()) {
                 if (parser.next() == Event.START_OBJECT) {
-                    JsonArray array = parser.getObject().getJsonArray("items");
-                    for (int i = 0; i < array.size(); i++) {
-                        JsonArray info = array.getJsonArray(i);
-                        String errorNumber = info.getJsonNumber(0).toString();
-                        String name;
-                        if (info.get(1) == JsonValue.NULL) {
-                            name = tr("(name missing)");
-                        } else {
-                            name = info.getJsonObject(1).getString("en");
+                    JsonValue value = parser.getValue();
+                    if (JsonValue.ValueType.OBJECT == value.getValueType()) {
+                        JsonArray array = value.asJsonObject().getJsonArray("items");
+                        for (int i = 0; i < array.size(); i++) {
+                            JsonArray info = array.getJsonArray(i);
+                            String errorNumber = info.getJsonNumber(0).toString();
+                            String name;
+                            if (info.get(1) == JsonValue.NULL) {
+                                name = tr("(name missing)");
+                            } else {
+                                name = info.getJsonObject(1).getString("en");
+                            }
+                            tErrors.put(errorNumber, name);
                         }
-                        tErrors.put(errorNumber, name);
                     }
                 }
             }
@@ -284,6 +287,7 @@ public class OsmoseInformation extends GenericInformation {
             JsonParser parser = null;
             try {
                 URL url = new URL(BASE_API + "error/" + node.get(ERROR_ID));
+                Logging.info(url.toExternalForm());
                 parser = Json.createParser(url.openStream());
                 while (parser.hasNext()) {
                     if (parser.next() == Event.START_OBJECT) {

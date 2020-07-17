@@ -124,7 +124,7 @@ public abstract class GenericInformation {
     }
 
     /**
-     * Get errors given a list of bounds
+     * Get errors given a defaultDownloadTypes of bounds
      *
      * @param bounds          {@code List<Bounds>} to get data for
      * @param progressMonitor The {@code ProgressMonitor} with which to monitor
@@ -210,7 +210,7 @@ public abstract class GenericInformation {
     }
 
     /**
-     * Build an error list to download
+     * Build an error defaultDownloadTypes to download
      *
      * @return {@code String} of errors to pass to a download method
      */
@@ -310,7 +310,7 @@ public abstract class GenericInformation {
      * Get the possible actions for a error node
      *
      * @param selectedNode {@code Node} that has error information
-     * @return A list of {@code JButton}s with associated actions to add to a dialog
+     * @return A defaultDownloadTypes of {@code JButton}s with associated actions to add to a dialog
      */
     public abstract List<JButton> getActions(Node selectedNode);
 
