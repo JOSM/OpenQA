@@ -1,3 +1,4 @@
+// License: GPL. For details, see LICENSE file.
 package com.kaart.openqa.profiles;
 
 import java.awt.Component;
@@ -12,16 +13,16 @@ import org.openstreetmap.josm.gui.preferences.SubPreferenceSetting;
 
 public abstract class ProfilePreferences extends DefaultTabPreferenceSetting implements SubPreferenceSetting {
 
-	protected HashMap<String, List<JCheckBox>> checkBoxes = new HashMap<>();
+    protected HashMap<String, List<JCheckBox>> checkBoxes = new HashMap<>();
 
-	public ProfilePreferences(String image, String title, String description) {
-		super(image, title, description);
-	}
+    public ProfilePreferences(String image, String title, String description) {
+        super(image, title, description);
+    }
 
-	public abstract Component createSubTab();
+    public abstract Component createSubTab();
 
-	public Map<String, List<JCheckBox>> getCheckBoxes() {
-		return checkBoxes;
-	}
+    public Map<String, List<JCheckBox>> getCheckBoxes() {
+        return checkBoxes;
+    }
 
 }

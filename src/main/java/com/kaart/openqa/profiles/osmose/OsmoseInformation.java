@@ -1,6 +1,4 @@
-/**
- *
- */
+// License: GPL. For details, see LICENSE file.
 package com.kaart.openqa.profiles.osmose;
 
 import static org.openstreetmap.josm.tools.I18n.tr;

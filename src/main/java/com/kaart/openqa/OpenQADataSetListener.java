@@ -1,6 +1,4 @@
-/**
- *
- */
+// License: GPL. For details, see LICENSE file.
 package com.kaart.openqa;
 
 import java.util.List;
@@ -23,64 +21,68 @@ import org.openstreetmap.josm.gui.MainApplication;
  */
 public class OpenQADataSetListener implements DataSetListener {
 
-	private List<Bounds> bounds;
+    private List<Bounds> bounds;
 
-	private final String cacheDir;
+    private final String cacheDir;
 
-	public OpenQADataSetListener(String cacheDir) {
-		this.cacheDir = cacheDir;
-	}
-	/* (non-Javadoc)
-	 * @see org.openstreetmap.josm.data.osm.event.DataSetListener#dataChanged(org.openstreetmap.josm.data.osm.event.DataChangedEvent)
-	 */
-	@Override
-	public void dataChanged(DataChangedEvent e) {
-		List<Bounds> tBounds = e.getDataset().getDataSourceBounds();
-		List<ErrorLayer> layers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
-		if (!layers.isEmpty() && (bounds == null || !bounds.containsAll(tBounds))) {
-			bounds = tBounds;
-			OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
-		}
-	}
+    public OpenQADataSetListener(String cacheDir) {
+        this.cacheDir = cacheDir;
+    }
 
-	@Override
-	public void otherDatasetChange(AbstractDatasetChangedEvent e) {
-		// Don't care
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.openstreetmap.josm.data.osm.event.DataSetListener#dataChanged(org.
+     * openstreetmap.josm.data.osm.event.DataChangedEvent)
+     */
+    @Override
+    public void dataChanged(DataChangedEvent e) {
+        List<Bounds> tBounds = e.getDataset().getDataSourceBounds();
+        List<ErrorLayer> layers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
+        if (!layers.isEmpty() && (bounds == null || !bounds.containsAll(tBounds))) {
+            bounds = tBounds;
+            OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+        }
+    }
 
-	@Override
-	public void nodeMoved(NodeMovedEvent e) {
-		// Don't care
-	}
+    @Override
+    public void otherDatasetChange(AbstractDatasetChangedEvent e) {
+        // Don't care
+    }
 
-	@Override
-	public void primitivesAdded(PrimitivesAddedEvent e) {
-		// Don't care
+    @Override
+    public void nodeMoved(NodeMovedEvent e) {
+        // Don't care
+    }
 
-	}
+    @Override
+    public void primitivesAdded(PrimitivesAddedEvent e) {
+        // Don't care
 
-	@Override
-	public void primitivesRemoved(PrimitivesRemovedEvent e) {
-		// Don't care
+    }
 
-	}
+    @Override
+    public void primitivesRemoved(PrimitivesRemovedEvent e) {
+        // Don't care
 
-	@Override
-	public void relationMembersChanged(RelationMembersChangedEvent e) {
-		// Don't care
+    }
 
-	}
+    @Override
+    public void relationMembersChanged(RelationMembersChangedEvent e) {
+        // Don't care
 
-	@Override
-	public void tagsChanged(TagsChangedEvent e) {
-		// Don't care
+    }
 
-	}
+    @Override
+    public void tagsChanged(TagsChangedEvent e) {
+        // Don't care
 
-	@Override
-	public void wayNodesChanged(WayNodesChangedEvent e) {
-		// Don't care
+    }
 
-	}
+    @Override
+    public void wayNodesChanged(WayNodesChangedEvent e) {
+        // Don't care
+
+    }
 
 }

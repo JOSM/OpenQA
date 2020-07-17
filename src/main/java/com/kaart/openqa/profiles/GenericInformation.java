@@ -1,6 +1,4 @@
-/**
- *
- */
+// License: GPL. For details, see LICENSE file.
 package com.kaart.openqa.profiles;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
@@ -310,7 +308,8 @@ public abstract class GenericInformation {
      * Get the possible actions for a error node
      *
      * @param selectedNode {@code Node} that has error information
-     * @return A defaultDownloadTypes of {@code JButton}s with associated actions to add to a dialog
+     * @return A defaultDownloadTypes of {@code JButton}s with associated actions to
+     *         add to a dialog
      */
     public abstract List<JButton> getActions(Node selectedNode);
 

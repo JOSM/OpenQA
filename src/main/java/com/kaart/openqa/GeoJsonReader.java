@@ -1,4 +1,4 @@
-// License: Apache 2.0. For details, see LICENSE file.
+// License: GPL. For details, see LICENSE file.
 package com.kaart.openqa;
 
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -32,7 +32,8 @@ import java.util.stream.Collectors;
 import static org.openstreetmap.josm.tools.I18n.tr;
 
 /**
- * Reader that reads GeoJSON files. See https://tools.ietf.org/html/rfc7946 for more information.
+ * Reader that reads GeoJSON files. See https://tools.ietf.org/html/rfc7946 for
+ * more information.
  */
 public class GeoJsonReader extends AbstractReader {
 
@@ -63,17 +64,17 @@ public class GeoJsonReader extends AbstractReader {
 
     private void parseRoot(final JsonObject object) {
         switch (object.getString(TYPE)) {
-            case "FeatureCollection":
-                parseFeatureCollection(object.getJsonArray(FEATURES));
-                break;
-            case "Feature":
-                parseFeature(object);
-                break;
-            case "GeometryCollection":
-                parseGeometryCollection(null, object);
-                break;
-            default:
-                parseGeometry(null, object);
+        case "FeatureCollection":
+            parseFeatureCollection(object.getJsonArray(FEATURES));
+            break;
+        case "Feature":
+            parseFeature(object);
+            break;
+        case "GeometryCollection":
+            parseGeometryCollection(null, object);
+            break;
+        default:
+            parseGeometry(null, object);
         }
     }
 
@@ -100,29 +101,29 @@ public class GeoJsonReader extends AbstractReader {
 
     private void parseGeometry(final JsonObject feature, final JsonObject geometry) {
         switch (geometry.getString(TYPE)) {
-            case "Point":
-                parsePoint(feature, geometry.getJsonArray(COORDINATES));
-                break;
-            case "MultiPoint":
-                parseMultiPoint(feature, geometry);
-                break;
-            case "LineString":
-                parseLineString(feature, geometry.getJsonArray(COORDINATES));
-                break;
-            case "MultiLineString":
-                parseMultiLineString(feature, geometry);
-                break;
-            case "Polygon":
-                parsePolygon(feature, geometry.getJsonArray(COORDINATES));
-                break;
-            case "MultiPolygon":
-                parseMultiPolygon(feature, geometry);
-                break;
-            case "GeometryCollection":
-                parseGeometryCollection(feature, geometry);
-                break;
-            default:
-                parseUnknown(geometry);
+        case "Point":
+            parsePoint(feature, geometry.getJsonArray(COORDINATES));
+            break;
+        case "MultiPoint":
+            parseMultiPoint(feature, geometry);
+            break;
+        case "LineString":
+            parseLineString(feature, geometry.getJsonArray(COORDINATES));
+            break;
+        case "MultiLineString":
+            parseMultiLineString(feature, geometry);
+            break;
+        case "Polygon":
+            parsePolygon(feature, geometry.getJsonArray(COORDINATES));
+            break;
+        case "MultiPolygon":
+            parseMultiPolygon(feature, geometry);
+            break;
+        case "GeometryCollection":
+            parseGeometryCollection(feature, geometry);
+            break;
+        default:
+            parseUnknown(geometry);
         }
     }
 
@@ -144,8 +145,7 @@ public class GeoJsonReader extends AbstractReader {
         if (coordinates.isEmpty()) {
             return;
         }
-        createWay(coordinates, false)
-            .ifPresent(way -> fillTagsFromFeature(feature, way));
+        createWay(coordinates, false).ifPresent(way -> fillTagsFromFeature(feature, way));
     }
 
     private void parseMultiLineString(final JsonObject feature, final JsonObject geometry) {
@@ -157,18 +157,17 @@ public class GeoJsonReader extends AbstractReader {
 
     private void parsePolygon(final JsonObject feature, final JsonArray coordinates) {
         if (coordinates.size() == 1) {
-            createWay(coordinates.getJsonArray(0), true)
-                .ifPresent(way -> fillTagsFromFeature(feature, way));
+            createWay(coordinates.getJsonArray(0), true).ifPresent(way -> fillTagsFromFeature(feature, way));
         } else if (coordinates.size() > 1) {
             // create multipolygon
             final Relation multipolygon = new Relation();
             multipolygon.put(TYPE, "multipolygon");
             createWay(coordinates.getJsonArray(0), true)
-                .ifPresent(way -> multipolygon.addMember(new RelationMember("outer", way)));
+                    .ifPresent(way -> multipolygon.addMember(new RelationMember("outer", way)));
 
             for (JsonValue interiorRing : coordinates.subList(1, coordinates.size())) {
                 createWay(interiorRing.asJsonArray(), true)
-                    .ifPresent(way -> multipolygon.addMember(new RelationMember("inner", way)));
+                        .ifPresent(way -> multipolygon.addMember(new RelationMember("inner", way)));
             }
 
             fillTagsFromFeature(feature, multipolygon);
@@ -196,10 +195,7 @@ public class GeoJsonReader extends AbstractReader {
 
         final List<LatLon> latlons = coordinates.stream().map(coordinate -> {
             final JsonArray jsonValues = coordinate.asJsonArray();
-            return new LatLon(
-                jsonValues.getJsonNumber(1).doubleValue(),
-                jsonValues.getJsonNumber(0).doubleValue()
-            );
+            return new LatLon(jsonValues.getJsonNumber(1).doubleValue(), jsonValues.getJsonNumber(0).doubleValue());
         }).collect(Collectors.toList());
 
         final int size = latlons.size();
@@ -249,10 +245,9 @@ public class GeoJsonReader extends AbstractReader {
                 if (value instanceof JsonString) {
                     tags.put(stringJsonValueEntry.getKey(), ((JsonString) value).getString());
                 } else if (value instanceof JsonStructure) {
-                    Logging.warn(
-                        "The GeoJSON contains an object with property '" + stringJsonValueEntry.getKey()
-                            + "' whose value has the unsupported type '" + value.getClass().getSimpleName() + "'. That key-value pair is ignored!"
-                    );
+                    Logging.warn("The GeoJSON contains an object with property '" + stringJsonValueEntry.getKey()
+                            + "' whose value has the unsupported type '" + value.getClass().getSimpleName()
+                            + "'. That key-value pair is ignored!");
                 } else if (value.getValueType() == JsonValue.ValueType.NULL) {
                     tags.put(stringJsonValueEntry.getKey(), null);
                 } else {
@@ -275,12 +270,15 @@ public class GeoJsonReader extends AbstractReader {
      * Parse the given input source and return the dataset.
      *
      * @param source          the source input stream. Must not be null.
-     * @param progressMonitor the progress monitor. If null, {@link NullProgressMonitor#INSTANCE} is assumed
+     * @param progressMonitor the progress monitor. If null,
+     *                        {@link NullProgressMonitor#INSTANCE} is assumed
      * @return the dataset with the parsed data
-     * @throws IllegalDataException     if an error was found while parsing the data from the source
+     * @throws IllegalDataException     if an error was found while parsing the data
+     *                                  from the source
      * @throws IllegalArgumentException if source is null
      */
-    public static DataSet parseDataSet(InputStream source, ProgressMonitor progressMonitor) throws IllegalDataException {
+    public static DataSet parseDataSet(InputStream source, ProgressMonitor progressMonitor)
+            throws IllegalDataException {
         return new GeoJsonReader().doParseDataSet(source, progressMonitor);
     }
 

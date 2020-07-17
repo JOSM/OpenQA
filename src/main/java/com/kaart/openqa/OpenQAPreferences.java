@@ -1,3 +1,4 @@
+// License: GPL. For details, see LICENSE file.
 package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
@@ -29,65 +30,67 @@ import com.kaart.openqa.profiles.osmose.OsmosePreferences;
 
 public class OpenQAPreferences extends DefaultTabPreferenceSetting implements SubPreferenceSetting {
 
-	JPanel testPanel;
+    JPanel testPanel;
 
-	final String cacheDir;
+    final String cacheDir;
 
-	ArrayList<ProfilePreferences> tests = new ArrayList<>();
+    ArrayList<ProfilePreferences> tests = new ArrayList<>();
 
-	public OpenQAPreferences(String directory) {
-		super(OpenQA.OPENQA_IMAGE, tr("OpenQA"), tr("OpenQA Settings"));
-		cacheDir = directory;
-	}
+    public OpenQAPreferences(String directory) {
+        super(OpenQA.OPENQA_IMAGE, tr("OpenQA"), tr("OpenQA Settings"));
+        cacheDir = directory;
+    }
 
-	@Override
-	public void addGui(PreferenceTabbedPane gui) {
-		testPanel = new JPanel();
-		testPanel.setLayout(new BorderLayout());
-		JTabbedPane tp = new JTabbedPane();
-		tests.add(new KeepRightPreferences(cacheDir));
-		tests.add(new OsmosePreferences(cacheDir));
-		for (ProfilePreferences preference : tests) {
-			Component subTab = preference.createSubTab();
-			JButton selectAll = new JButton(tr("Select all"));
-			selectAll.addActionListener(e -> toggleBoxes(preference, true));
+    @Override
+    public void addGui(PreferenceTabbedPane gui) {
+        testPanel = new JPanel();
+        testPanel.setLayout(new BorderLayout());
+        JTabbedPane tp = new JTabbedPane();
+        tests.add(new KeepRightPreferences(cacheDir));
+        tests.add(new OsmosePreferences(cacheDir));
+        for (ProfilePreferences preference : tests) {
+            Component subTab = preference.createSubTab();
+            JButton selectAll = new JButton(tr("Select all"));
+            selectAll.addActionListener(e -> toggleBoxes(preference, true));
 
-			JButton selectNone = new JButton(tr("Select none"));
-			selectNone.addActionListener(e -> toggleBoxes(preference, false));
-			JPanel tPanel = new VerticallyScrollablePanel(new GridBagLayout());
-			tPanel.add(selectAll);
-			tPanel.add(selectNone, GBC.eol());
-			tPanel.add(subTab);
-			tp.add(preference.getTitle(), new JScrollPane(tPanel));
-		}
-		testPanel.add(tp, BorderLayout.CENTER);
-		PreferencePanel preferenceTab = gui.createPreferenceTab(this);
-		preferenceTab.add(testPanel, GBC.eol().fill(GBC.BOTH));
-	}
+            JButton selectNone = new JButton(tr("Select none"));
+            selectNone.addActionListener(e -> toggleBoxes(preference, false));
+            JPanel tPanel = new VerticallyScrollablePanel(new GridBagLayout());
+            tPanel.add(selectAll);
+            tPanel.add(selectNone, GBC.eol());
+            tPanel.add(subTab);
+            tp.add(preference.getTitle(), new JScrollPane(tPanel));
+        }
+        testPanel.add(tp, BorderLayout.CENTER);
+        PreferencePanel preferenceTab = gui.createPreferenceTab(this);
+        preferenceTab.add(testPanel, GBC.eol().fill(GBC.BOTH));
+    }
 
-	private void toggleBoxes(ProfilePreferences preference, boolean checked) {
-		Map<String, List<JCheckBox>> boxes = preference.getCheckBoxes();
-		for (List<JCheckBox> boxList : boxes.values()) {
-			for (JCheckBox checkBox : boxList) {
-				checkBox.setSelected(checked);
-			}
-		}
-	}
+    private void toggleBoxes(ProfilePreferences preference, boolean checked) {
+        Map<String, List<JCheckBox>> boxes = preference.getCheckBoxes();
+        for (List<JCheckBox> boxList : boxes.values()) {
+            for (JCheckBox checkBox : boxList) {
+                checkBox.setSelected(checked);
+            }
+        }
+    }
 
-	@Override
-	public boolean ok() {
-		boolean ok = false;
-		for (ProfilePreferences preference : tests) {
-			if (preference == null) continue;
-			boolean nok = preference.ok();
-			if (!ok) ok = nok;
-		}
-		OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
-		return ok;
-	}
+    @Override
+    public boolean ok() {
+        boolean ok = false;
+        for (ProfilePreferences preference : tests) {
+            if (preference == null)
+                continue;
+            boolean nok = preference.ok();
+            if (!ok)
+                ok = nok;
+        }
+        OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+        return ok;
+    }
 
-	@Override
-	public TabPreferenceSetting getTabPreferenceSetting(PreferenceTabbedPane gui) {
-		return gui.getValidatorPreference();
-	}
+    @Override
+    public TabPreferenceSetting getTabPreferenceSetting(PreferenceTabbedPane gui) {
+        return gui.getValidatorPreference();
+    }
 }
