@@ -47,6 +47,8 @@ import org.openstreetmap.josm.actions.mapmode.SelectLassoAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.EastNorth;
 import org.openstreetmap.josm.data.osm.DataSet;
+import org.openstreetmap.josm.data.osm.DataSourceChangeEvent;
+import org.openstreetmap.josm.data.osm.DataSourceListener;
 import org.openstreetmap.josm.data.osm.HighlightUpdateListener;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
@@ -57,6 +59,10 @@ import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.AbstractModifiableLayer;
 import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.gui.layer.LayerManager.LayerAddEvent;
+import org.openstreetmap.josm.gui.layer.LayerManager.LayerChangeListener;
+import org.openstreetmap.josm.gui.layer.LayerManager.LayerOrderChangeEvent;
+import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.progress.NullProgressMonitor;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
@@ -72,7 +78,8 @@ import org.openstreetmap.josm.tools.bugreport.ReportedException;
 
 import com.kaart.openqa.profiles.GenericInformation;
 
-public class ErrorLayer extends AbstractModifiableLayer implements MouseListener, HighlightUpdateListener {
+public class ErrorLayer extends AbstractModifiableLayer
+        implements MouseListener, HighlightUpdateListener, LayerChangeListener, DataSourceListener {
     /**
      * Pattern to detect end of sentences followed by another one, or a link, in
      * western script. Group 1 (capturing): period, interrogation mark, exclamation
@@ -105,6 +112,8 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
     private boolean updateCanceled = false;
 
+    private List<DataSet> listeningDataSets = new ArrayList<>();
+
     /**
      * Create a new ErrorLayer using a class that extends {@code GenericInformation}
      *
@@ -114,6 +123,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
         super(tr("{0} Layers", OpenQA.NAME));
         this.cacheDir = cacheDir;
         hookUpMapViewer();
+        MainApplication.getLayerManager().addAndFireLayerChangeListener(this);
     }
 
     /**
@@ -218,6 +228,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
             }
         }
         hideNodeWindow();
+        MainApplication.getLayerManager().removeLayerChangeListener(this);
         super.destroy();
     }
 
@@ -633,7 +644,7 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
 
         public ToggleSource(GenericInformation type) {
             this.type = type;
-            if (!enabledSources.get(type)) {
+            if (Boolean.FALSE.equals(enabledSources.get(type))) {
                 new ImageProvider("warning-small").getResource().attachImageIcon(this, true);
             } else {
                 new ImageProvider("dialogs", "validator").getResource().attachImageIcon(this, true);
@@ -665,6 +676,9 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
             directory.mkdirs();
             for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
                 DataSet ds = entry.getValue();
+                if (ds == null) {
+                    continue;
+                }
                 DataSet temporaryDataSet = new DataSet();
                 for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
                     if (osmPrimitive.hasKey("actionTaken")) {
@@ -796,4 +810,37 @@ public class ErrorLayer extends AbstractModifiableLayer implements MouseListener
             }
         }
     }
+
+    @Override
+    public void layerAdded(LayerAddEvent e) {
+        if (e.getAddedLayer() instanceof OsmDataLayer) {
+            DataSet ds = ((OsmDataLayer) e.getAddedLayer()).getDataSet();
+            if (!this.listeningDataSets.contains(ds)) {
+                ds.addDataSourceListener(this);
+                this.listeningDataSets.add(ds);
+            }
+        }
+    }
+
+    @Override
+    public void layerRemoving(LayerRemoveEvent e) {
+        if (e.getRemovedLayer() instanceof OsmDataLayer) {
+            DataSet ds = ((OsmDataLayer) e.getRemovedLayer()).getDataSet();
+            if (this.listeningDataSets.contains(ds)) {
+                ds.removeDataSourceListener(this);
+                this.listeningDataSets.remove(ds);
+            }
+        }
+    }
+
+    @Override
+    public void layerOrderChanged(LayerOrderChangeEvent e) {
+        // Do nothing
+    }
+
+    @Override
+    public void dataSourceChange(DataSourceChangeEvent event) {
+        OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+    }
+
 }

@@ -4,17 +4,18 @@ package com.kaart.openqa;
 import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 
-import javax.swing.AbstractAction;
-
+import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.gui.MainMenu;
 import org.openstreetmap.josm.gui.preferences.PreferenceSetting;
 import org.openstreetmap.josm.plugins.Plugin;
 import org.openstreetmap.josm.plugins.PluginInformation;
 import org.openstreetmap.josm.spi.preferences.Config;
-import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.Shortcut;
 
 /**
  *
@@ -29,6 +30,20 @@ public class OpenQA extends Plugin {
 
     public static final String OPENQA_IMAGE = "openqa.svg";
 
+    private class OpenQAAction extends JosmAction {
+        private static final long serialVersionUID = 1L;
+
+        OpenQAAction() {
+            super(NAME.concat(tr(" layer")), OPENQA_IMAGE, tr("OpenQA Layer"), Shortcut.registerShortcut("openqa:layer",
+                    tr("OpenQA Layer"), KeyEvent.CHAR_UNDEFINED, Shortcut.NONE), false, "openqa:layer", false);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+        }
+    }
+
     public OpenQA(PluginInformation info) {
         super(info);
         try {
@@ -41,22 +56,13 @@ public class OpenQA extends Plugin {
         if (Config.getPref().get(PREF_FILETYPE).equals("")) {
             Config.getPref().put(PREF_FILETYPE, "geojson");
         }
-        AbstractAction openqaAction = new AbstractAction(NAME.concat(tr(" layer")),
-                ImageProvider.get(OPENQA_IMAGE, ImageProvider.ImageSizes.MENU)) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
-            }
-        };
-        MainApplication.getMenu().dataMenu.add(openqaAction);
+        OpenQAAction openqaAction = new OpenQAAction();
+        MainMenu.add(MainApplication.getMenu().dataMenu, openqaAction);
     }
 
     @Override
     public PreferenceSetting getPreferenceSetting() {
-        OpenQAPreferences openQA = new OpenQAPreferences(cacheDir);
-        return openQA;
+        return new OpenQAPreferences(cacheDir);
     }
 
     public static String getVersion() {
