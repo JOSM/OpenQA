@@ -6,16 +6,19 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
+import javax.json.JsonString;
 import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
 import javax.json.stream.JsonParser;
@@ -28,11 +31,11 @@ import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
+import org.openstreetmap.josm.tools.LanguageInfo;
 import org.openstreetmap.josm.tools.Logging;
 
 import com.kaart.openqa.CachedFile;
@@ -46,9 +49,9 @@ public class OsmoseInformation extends GenericInformation {
     public static final String NAME = "Osmose";
 
     public static final String LAYER_NAME = "Osmose Errors";
-    public static final String BASE_API = "http://osmose.openstreetmap.fr/en/api/0.2/";
-    public static final String BASE_IMG = "http://osmose.openstreetmap.fr/en/images/markers/marker-b-%s.png";
-    public static final String BASE_ERROR_URL = "http://osmose.openstreetmap.fr/en/error/";
+    public static final String BASE_API = "http://osmose.openstreetmap.fr/{0}/api/0.3/";
+    public static final String BASE_IMG = "http://osmose.openstreetmap.fr/{0}/images/markers/marker-b-%s.png";
+    public static final String BASE_ERROR_URL = "http://osmose.openstreetmap.fr/{0}/error/";
 
     private static final String ADDITIONAL_INFORMATION = "ADDITIONAL_INFORMATION";
 
@@ -67,35 +70,29 @@ public class OsmoseInformation extends GenericInformation {
         CachedFile cache = getFile(bound);
         DataSet ds = new DataSet();
         try (JsonParser json = Json.createParser(cache.getInputStream())) {
-            ArrayList<String> fields = new ArrayList<>();
             while (json.hasNext()) {
                 if (json.next() == Event.START_OBJECT) {
                     JsonObject jobject = json.getObject();
-                    if (fields.isEmpty()) {
-                        JsonArray tArray = jobject.getJsonArray("description");
-                        for (JsonValue value : tArray) {
-                            if (value.getValueType() == ValueType.STRING) {
-                                fields.add(value.toString());
-                            }
-                        }
-                    }
-                    JsonArray errors = jobject.getJsonArray("errors");
-                    for (int i = 0; i < errors.size(); i++) {
-                        JsonArray error = errors.getJsonArray(i);
+                    JsonArray errors = jobject.getJsonArray("issues");
+                    for (JsonObject error : errors.getValuesAs(JsonObject.class)) {
                         Node node = new Node();
                         double lat = Double.MAX_VALUE;
                         double lon = Double.MAX_VALUE;
-                        for (int j = 0; j < fields.size(); j++) {
-                            String field = fields.get(j).replace("\"", "");
-                            String errorValue = error.getString(j);
-                            if (field.equals("lat")) {
-                                lat = Double.parseDouble(errorValue);
-                            } else if (field.equals("lon")) {
-                                lon = Double.parseDouble(errorValue);
+                        for (Map.Entry<String, JsonValue> entry : error.entrySet()) {
+                            String field = entry.getKey();
+                            if ("lat".equals(field)) {
+                                lat = Double.parseDouble(entry.getValue().toString());
+                            } else if ("lon".equals(field)) {
+                                lon = Double.parseDouble(entry.getValue().toString());
+                            } else if (entry.getValue() instanceof JsonString) {
+                                node.put(field, ((JsonString) entry.getValue()).getString());
                             } else {
-                                node.put(field, errorValue);
+                                node.put(field, entry.getValue().toString());
                             }
                         }
+                        String id = node.get("id");
+                        node.remove("id");
+                        node.put(ERROR_ID, id);
                         node.setCoor(new LatLon(lat, lon));
 
                         if (!node.isOutSideWorld()) {
@@ -103,9 +100,6 @@ public class OsmoseInformation extends GenericInformation {
                         }
                     }
                 }
-            }
-            for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
-                osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get(ERROR_ID)), 1);
             }
         } catch (IOException e) {
             Logging.error(e);
@@ -117,7 +111,7 @@ public class OsmoseInformation extends GenericInformation {
     private CachedFile getFile(Bounds bound) {
         String type = "json";
         String enabled = buildDownloadErrorList();
-        String url = BASE_API.concat("errors?full=true").concat("&item=").concat(enabled);
+        String url = getBaseApi().concat("issues?full=true").concat("&item=").concat(enabled);
         url = url.concat("&bbox=").concat(Double.toString(bound.getMinLon()));
         url = url.concat(",").concat(Double.toString(bound.getMinLat()));
         url = url.concat(",").concat(Double.toString(bound.getMaxLon()));
@@ -192,7 +186,10 @@ public class OsmoseInformation extends GenericInformation {
      */
     public static SortedMap<String, String> getErrors(String cacheDir) {
         TreeMap<String, String> tErrors = new TreeMap<>();
-        try (CachedFile cache = new CachedFile(BASE_API + "meta/items")) {
+
+        // TODO move to 0.3 api
+        try (CachedFile cache = new CachedFile(
+                MessageFormat.format("http://osmose.openstreetmap.fr/{0}/api/0.2/meta/items", getLocale()))) {
             cache.setDestDir(cacheDir);
             JsonParser parser = Json.createParser(cache.getInputStream());
             while (parser.hasNext()) {
@@ -206,6 +203,8 @@ public class OsmoseInformation extends GenericInformation {
                             String name;
                             if (info.get(1) == JsonValue.NULL) {
                                 name = tr("(name missing)");
+                            } else if (info.getJsonObject(1).containsKey(getLocale())) {
+                                name = info.getJsonObject(1).getString(getLocale());
                             } else {
                                 name = info.getJsonObject(1).getString("en");
                             }
@@ -233,7 +232,9 @@ public class OsmoseInformation extends GenericInformation {
         SortedMap<String, SortedMap<String, SortedMap<String, String>>> categories = new TreeMap<>();
         SortedMap<String, String> errors = getErrors(cacheDir);
         JsonParser parser = null;
-        try (CachedFile cache = new CachedFile(BASE_API + "meta/categories")) {
+        // TODO move to 0.3 when equivalent is available
+        try (CachedFile cache = new CachedFile(
+                MessageFormat.format("http://osmose.openstreetmap.fr/{0}/api/0.2/meta/categories", getLocale()))) {
             cache.setDestDir(cacheDir);
             parser = Json.createParser(cache.getInputStream());
             while (parser.hasNext()) {
@@ -242,7 +243,7 @@ public class OsmoseInformation extends GenericInformation {
                     for (int i = 0; i < array.size(); i++) {
                         JsonObject info = array.getJsonObject(i);
                         String category = Integer.toString(info.getInt("categorie_id"));
-                        String name = info.getJsonObject("menu_lang").getString("en");
+                        String name = info.getJsonObject("menu_lang").getString(getLocale());
                         TreeMap<String, String> catErrors = new TreeMap<>();
                         JsonArray items = info.getJsonArray("item");
                         for (int j = 0; j < items.size(); j++) {
@@ -283,10 +284,9 @@ public class OsmoseInformation extends GenericInformation {
         @Override
         public void run() {
             JsonParser parser = null;
-            try {
-                URL url = new URL(BASE_API + "error/" + node.get(ERROR_ID));
-                Logging.info(url.toExternalForm());
-                parser = Json.createParser(url.openStream());
+            try (CachedFile cache = new CachedFile(getBaseApiReal() + "issue/" + node.get(ERROR_ID))) {
+                cache.setDeleteOnExit(true);
+                parser = Json.createParser(cache.getContentReader());
                 while (parser.hasNext()) {
                     if (parser.next() == Event.START_OBJECT) {
                         JsonObject info = parser.getObject();
@@ -333,7 +333,7 @@ public class OsmoseInformation extends GenericInformation {
     public String getNodeToolTip(Node node) {
         StringBuilder sb = new StringBuilder("<html>");
         sb.append(tr(NAME)).append(": ").append(node.get("title")).append(" - <a href=")
-                .append(BASE_ERROR_URL + node.get(ERROR_ID)).append(">").append(node.get(ERROR_ID)).append("</a>");
+                .append(getBaseErrorUrl() + node.get(ERROR_ID)).append(">").append(node.get(ERROR_ID)).append("</a>");
 
         sb.append("<hr/>");
         String subtitle = node.get("subtitle");
@@ -387,7 +387,7 @@ public class OsmoseInformation extends GenericInformation {
 
     @Override
     public List<JButton> getActions(Node node) {
-        final String apiUrl = BASE_API + "error/" + node.get(ERROR_ID) + "/";
+        final String apiUrl = getBaseApi() + "issue/" + node.get(ERROR_ID) + "/";
 
         JButton fixed = new JButton();
         JButton falsePositive = new JButton();
@@ -452,7 +452,7 @@ public class OsmoseInformation extends GenericInformation {
             } else if ("falsePositive".equals(errorValue)) {
                 icon = ImageProvider.get("dialogs/notes", "note_comment", size);
             } else {
-                CachedFile image = GenericInformation.getFile(String.format(BASE_IMG, errorValue), "image/*",
+                CachedFile image = GenericInformation.getFile(String.format(getBaseImg(), errorValue), "image/*",
                         new File(cacheDir, IMG_SUB_DIR).getCanonicalPath());
                 image.setMaxAge(30 * (long) 86400);
                 image.getFile();
@@ -483,21 +483,34 @@ public class OsmoseInformation extends GenericInformation {
 
     @Override
     public String getBaseApi() {
-        return BASE_API;
+        return getBaseApiReal();
+    }
+
+    private static String getBaseApiReal() {
+        return MessageFormat.format(BASE_API, getLocale());
     }
 
     @Override
     public String getBaseImg() {
-        return BASE_IMG;
+        return MessageFormat.format(BASE_IMG, getLocale());
     }
 
     @Override
     public String getBaseErrorUrl() {
-        return BASE_ERROR_URL;
+        return MessageFormat.format(BASE_ERROR_URL, getLocale());
     }
 
     @Override
     public SortedMap<String, String> getErrors() {
         return getErrors(getCacheDir());
+    }
+
+    private static String getLocale() {
+        String[] valid = new String[] { "eu", "pt_BR", "uk", "zh_TW", "hu", "en", "ro", "ru", "de", "nb", "lt", "pl",
+                "cs", "it", "es", "fa", "fi", "zh_CN", "ca", "el", "ja", "nl", "fr", "sv", "gl", "pt" };
+        if (Stream.of(valid).anyMatch(s -> s.equalsIgnoreCase(LanguageInfo.getJOSMLocaleCode()))) {
+            return LanguageInfo.getJOSMLocaleCode();
+        }
+        return "en";
     }
 }

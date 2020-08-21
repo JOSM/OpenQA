@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.SortedMap;
+import java.util.TreeMap;
 
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
@@ -50,8 +51,10 @@ public class OsmosePreferences extends ProfilePreferences {
         ArrayList<String> prefs = new ArrayList<>();
         SortedMap<String, SortedMap<String, SortedMap<String, String>>> categories = OsmoseInformation
                 .getCategories(cacheDir);
-        String initialKey = categories.get(categories.firstKey()).firstKey();
-        SortedMap<String, String> errors = categories.get(categories.firstKey()).get(initialKey);
+        SortedMap<String, String> errors = new TreeMap<>();
+        for (SortedMap<String, SortedMap<String, String>> value : categories.values()) {
+            value.values().forEach(errors::putAll);
+        }
         String category = "";
         for (Component component : testPanel.getComponents()) {
             if (component instanceof JLabel) {
@@ -96,7 +99,7 @@ public class OsmosePreferences extends ProfilePreferences {
         for (Entry<String, SortedMap<String, SortedMap<String, String>>> entry : errors.entrySet()) {
             String categoryNumber = entry.getKey();
             for (String category : entry.getValue().keySet()) {
-                JLabel label = new JLabel(category);
+                JLabel label = new JLabel(category + " (" + categoryNumber + ")");
                 testPanel.add(label, GBC.eol());
                 Logging.info("Category: {0} {1}", category, categoryNumber);
                 for (String errorNumber : errors.get(categoryNumber).get(category).keySet()) {
@@ -111,7 +114,8 @@ public class OsmosePreferences extends ProfilePreferences {
                             : new ArrayList<>();
                     list.add(toAdd);
                     checkBoxes.put(baseMessage, list);
-                    testPanel.add(toAdd, GBC.eol());
+                    testPanel.add(toAdd, GBC.std().fill(GBC.HORIZONTAL));
+                    testPanel.add(new JLabel(errorNumber), GBC.eol());
                 }
             }
         }
