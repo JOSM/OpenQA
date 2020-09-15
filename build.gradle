@@ -10,11 +10,11 @@ plugins {
   id "jacoco"
   id "maven-publish"
   id "pmd"
-  id "com.github.ben-manes.versions" version "0.29.0"
+  id "com.github.ben-manes.versions" version "0.33.0"
   id "com.github.spotbugs" version "4.5.0"
   id "org.openstreetmap.josm" version "0.7.0"
   id "net.ltgt.errorprone" version "1.2.1"
-  id "com.diffplug.spotless" version "5.2.0"
+  id "com.diffplug.spotless" version "5.5.1"
   //id 'de.aaschmid.cpd' version '2.0'
 }
 
@@ -48,10 +48,10 @@ def versions = [
   errorprone: "2.4.0",
   jacoco: "0.8.5",
   jmockit: "1.46",
-  junit: "5.6.2",
+  junit: "5.7.0",
   pmd: "6.6.0",
   spotbugs: "4.1.2",
-  wiremock: "2.27.1",
+  wiremock: "2.27.2",
   findsecbugs: "1.10.1",
 ]
 
