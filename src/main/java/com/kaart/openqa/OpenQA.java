@@ -34,8 +34,9 @@ public class OpenQA extends Plugin {
         private static final long serialVersionUID = 1L;
 
         OpenQAAction() {
-            super(NAME.concat(tr(" layer")), OPENQA_IMAGE, tr("OpenQA Layer"), Shortcut.registerShortcut("openqa:layer",
-                    tr("OpenQA Layer"), KeyEvent.CHAR_UNDEFINED, Shortcut.NONE), false, "openqa:layer", false);
+            super(OpenQA.NAME.concat(tr(" layer")), OPENQA_IMAGE, tr("OpenQA Layer"), Shortcut
+                    .registerShortcut("openqa:layer", tr("OpenQA Layer"), KeyEvent.CHAR_UNDEFINED, Shortcut.NONE),
+                    false, "openqa:layer", false);
         }
 
         @Override
