@@ -8,7 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.SortedMap;
+import java.util.NavigableMap;
 import java.util.TreeMap;
 
 import javax.swing.AbstractAction;
@@ -46,8 +46,8 @@ public class KeepRightInformation extends GenericInformation {
     public static final String FIXED = "ignore_t";
     public static final String FALSE_POSITIVE = "ignore";
 
-    protected static SortedMap<String, String> formats = new TreeMap<>();
-    protected static SortedMap<String, String> errors = new TreeMap<>();
+    protected static NavigableMap<String, String> formats = new TreeMap<>();
+    protected static NavigableMap<String, String> errors = new TreeMap<>();
     static {
         errors.put("0", tr("default"));
         errors.put("20", tr("multiple nodes on the same spot"));
@@ -366,7 +366,7 @@ public class KeepRightInformation extends GenericInformation {
     }
 
     @Override
-    public SortedMap<String, String> getErrors() {
+    public NavigableMap<String, String> getErrors() {
         return errors;
     }
 }

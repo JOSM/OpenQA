@@ -7,8 +7,8 @@ import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.SortedMap;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.TreeMap;
 
 import javax.swing.JCheckBox;
@@ -49,10 +49,10 @@ public class OsmosePreferences extends ProfilePreferences {
     @Override
     public boolean ok() {
         ArrayList<String> prefs = new ArrayList<>();
-        SortedMap<String, SortedMap<String, SortedMap<String, String>>> categories = OsmoseInformation
+        NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> categories = OsmoseInformation
                 .getCategories(cacheDir);
-        SortedMap<String, String> errors = new TreeMap<>();
-        for (SortedMap<String, SortedMap<String, String>> value : categories.values()) {
+        NavigableMap<String, String> errors = new TreeMap<>();
+        for (NavigableMap<String, NavigableMap<String, String>> value : categories.values()) {
             value.values().forEach(errors::putAll);
         }
         String category = "";
@@ -60,7 +60,7 @@ public class OsmosePreferences extends ProfilePreferences {
             if (component instanceof JLabel) {
                 JLabel label = (JLabel) component;
                 category = label.getText();
-                for (SortedMap<String, SortedMap<String, String>> descriptiveCategory : categories.values()) {
+                for (NavigableMap<String, NavigableMap<String, String>> descriptiveCategory : categories.values()) {
                     if (descriptiveCategory.keySet().contains(category)) {
                         errors = descriptiveCategory.get(category);
                         Logging.info("Category: {0}", category);
@@ -72,7 +72,7 @@ public class OsmosePreferences extends ProfilePreferences {
                 continue;
             JCheckBox preference = (JCheckBox) component;
             if (preference.isSelected()) {
-                for (Entry<String, String> entry : errors.entrySet()) {
+                for (Map.Entry<String, String> entry : errors.entrySet()) {
                     if (preference.getText().equals(entry.getValue())) {
                         prefs.add(entry.getKey());
                         break;
@@ -94,9 +94,9 @@ public class OsmosePreferences extends ProfilePreferences {
         testPanel = new VerticallyScrollablePanel(new GridBagLayout());
         OsmoseInformation info = new OsmoseInformation(cacheDir);
         ArrayList<String> prefs = new ArrayList<>(Config.getPref().getList(PREF_TESTS, info.buildDefaultPref()));
-        SortedMap<String, SortedMap<String, SortedMap<String, String>>> errors = OsmoseInformation
+        NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> errors = OsmoseInformation
                 .getCategories(cacheDir);
-        for (Entry<String, SortedMap<String, SortedMap<String, String>>> entry : errors.entrySet()) {
+        for (Map.Entry<String, NavigableMap<String, NavigableMap<String, String>>> entry : errors.entrySet()) {
             String categoryNumber = entry.getKey();
             for (String category : entry.getValue().keySet()) {
                 JLabel label = new JLabel(category + " (" + categoryNumber + ")");

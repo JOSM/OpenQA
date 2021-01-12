@@ -10,8 +10,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.SortedMap;
+import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
@@ -55,7 +54,7 @@ public class OsmoseInformation extends GenericInformation {
 
     private static final String ADDITIONAL_INFORMATION = "ADDITIONAL_INFORMATION";
 
-    protected static SortedMap<String, String> formats = new TreeMap<>();
+    protected static NavigableMap<String, String> formats = new TreeMap<>();
 
     public OsmoseInformation(String cacheDir) {
         super(cacheDir);
@@ -182,9 +181,9 @@ public class OsmoseInformation extends GenericInformation {
      * Get all the possible errors
      *
      * @param cacheDir Directory to store error defaultDownloadTypes file
-     * @return SortedMap&lt;String errorNumber, String errorName&gt;
+     * @return NavigableMap&lt;String errorNumber, String errorName&gt;
      */
-    public static SortedMap<String, String> getErrors(String cacheDir) {
+    public static NavigableMap<String, String> getErrors(String cacheDir) {
         TreeMap<String, String> tErrors = new TreeMap<>();
 
         // TODO move to 0.3 api
@@ -225,12 +224,13 @@ public class OsmoseInformation extends GenericInformation {
      * Get the errors and their categories
      *
      * @param cacheDir directory to cache information in
-     * @return SortedMap&lt;String category_number, TreeMap&lt;String category,
+     * @return NavigableMap&lt;String category_number, TreeMap&lt;String category,
      *         TreeMap&lt;String errorNumber, String errorName&gt;&gt;&gt;
      */
-    public static SortedMap<String, SortedMap<String, SortedMap<String, String>>> getCategories(String cacheDir) {
-        SortedMap<String, SortedMap<String, SortedMap<String, String>>> categories = new TreeMap<>();
-        SortedMap<String, String> errors = getErrors(cacheDir);
+    public static NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> getCategories(
+            String cacheDir) {
+        NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> categories = new TreeMap<>();
+        NavigableMap<String, String> errors = getErrors(cacheDir);
         JsonParser parser = null;
         // TODO move to 0.3 when equivalent is available
         try (CachedFile cache = new CachedFile(
@@ -258,7 +258,7 @@ public class OsmoseInformation extends GenericInformation {
                             String nItem = Integer.toString(item.getInt("item"));
                             catErrors.put(nItem, errors.get(nItem));
                         }
-                        SortedMap<String, SortedMap<String, String>> tMap = new TreeMap<>();
+                        NavigableMap<String, NavigableMap<String, String>> tMap = new TreeMap<>();
                         tMap.put(name, catErrors);
                         categories.put(category, tMap);
                     }
@@ -266,7 +266,7 @@ public class OsmoseInformation extends GenericInformation {
             }
         } catch (IOException e) {
             Logging.debug(e.getMessage());
-            SortedMap<String, SortedMap<String, String>> tMap = new TreeMap<>();
+            NavigableMap<String, NavigableMap<String, String>> tMap = new TreeMap<>();
             tMap.put(tr("No categories found"), errors);
             categories.put("-1", tMap);
         } finally {
@@ -297,7 +297,7 @@ public class OsmoseInformation extends GenericInformation {
                 while (parser.hasNext()) {
                     if (parser.next() == Event.START_OBJECT) {
                         JsonObject info = parser.getObject();
-                        for (Entry<String, JsonValue> entry : info.entrySet()) {
+                        for (Map.Entry<String, JsonValue> entry : info.entrySet()) {
                             String key = entry.getKey();
                             JsonValue value = entry.getValue();
                             if ("elems".equals(key))
@@ -508,7 +508,7 @@ public class OsmoseInformation extends GenericInformation {
     }
 
     @Override
-    public SortedMap<String, String> getErrors() {
+    public NavigableMap<String, String> getErrors() {
         return getErrors(getCacheDir());
     }
 
