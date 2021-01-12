@@ -95,10 +95,10 @@ test {
 sourceSets {
   test {
     java {
-      srcDirs = ["test/unit"]
+      srcDirs = ["src/test/unit"]
     }
     resources {
-      srcDirs = ["test/data"]
+      srcDirs = ["src/test/data"]
     }
   }
 }
