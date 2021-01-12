@@ -243,7 +243,14 @@ public class OsmoseInformation extends GenericInformation {
                     for (int i = 0; i < array.size(); i++) {
                         JsonObject info = array.getJsonObject(i);
                         String category = Integer.toString(info.getInt("categorie_id"));
-                        String name = info.getJsonObject("menu_lang").getString(getLocale());
+                        JsonObject menuLang = info.getJsonObject("menu_lang");
+                        final String name;
+                        if (menuLang.containsKey(getLocale())) {
+                            name = menuLang.getString(getLocale());
+                        } else {
+                            // Fall back to English for now.
+                            name = menuLang.getString("en");
+                        }
                         TreeMap<String, String> catErrors = new TreeMap<>();
                         JsonArray items = info.getJsonArray("item");
                         for (int j = 0; j < items.size(); j++) {
