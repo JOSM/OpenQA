@@ -1,8 +1,0 @@
-README
-======
-The author of OpenQA is Taylor Smock <taylor.smock@kaartgroup.com>.
-
-OpenQA is a plugin designed to take various QA systems for OpenStreetMap and integrate them with JOSM.
-OpenQA currently only supports KeepRight and Osmose.
-
-OpenQA is licensed under the GPL v2 or later, due to copying CachedFile from JOSM.
