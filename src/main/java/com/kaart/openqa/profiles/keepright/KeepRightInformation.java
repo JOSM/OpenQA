@@ -154,10 +154,10 @@ public class KeepRightInformation extends GenericInformation {
     private CachedFile getFile(String type, Bounds bound) {
         String enabled = buildDownloadErrorList();
         String url = BASE_API + "format=" + type + "&ch=" + enabled;
-        url += "&left=" + Double.toString(bound.getMinLon());
-        url += "&bottom=" + Double.toString(bound.getMinLat());
-        url += "&right=" + Double.toString(bound.getMaxLon());
-        url += "&top=" + Double.toString(bound.getMaxLat());
+        url += "&left=" + bound.getMinLon();
+        url += "&bottom=" + bound.getMinLat();
+        url += "&right=" + bound.getMaxLon();
+        url += "&top=" + bound.getMaxLat();
         CachedFile cache;
         try {
             cache = GenericInformation.getFile(url, formats.get(type),
@@ -216,7 +216,7 @@ public class KeepRightInformation extends GenericInformation {
         try {
             String realErrorValue = "";
             try {
-                realErrorValue = "zap" + Integer.toString((Integer.parseInt(errorValue) / 10) * 10);
+                realErrorValue = "zap" + (Integer.parseInt(errorValue) / 10) * 10;
             } catch (NumberFormatException e) {
                 realErrorValue = errorValue;
                 Logging.debug(e.getMessage());

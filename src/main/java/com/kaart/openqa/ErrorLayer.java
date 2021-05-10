@@ -112,7 +112,7 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     private boolean updateCanceled = false;
 
-    private List<DataSet> listeningDataSets = new ArrayList<>();
+    private final List<DataSet> listeningDataSets = new ArrayList<>();
 
     /**
      * Create a new ErrorLayer using a class that extends {@code GenericInformation}

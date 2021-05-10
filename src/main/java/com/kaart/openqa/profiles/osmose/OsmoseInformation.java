@@ -10,6 +10,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -339,8 +340,8 @@ public class OsmoseInformation extends GenericInformation {
     @Override
     public String getNodeToolTip(Node node) {
         StringBuilder sb = new StringBuilder("<html>");
-        sb.append(tr(NAME)).append(": ").append(node.get("title")).append(" - <a href=")
-                .append(getBaseErrorUrl() + node.get(ERROR_ID)).append(">").append(node.get(ERROR_ID)).append("</a>");
+        sb.append(tr(NAME)).append(": ").append(node.get("title")).append(" - <a href=").append(getBaseErrorUrl())
+                .append(node.get(ERROR_ID)).append('>').append(node.get(ERROR_ID)).append("</a>");
 
         sb.append("<hr/>");
         String subtitle = node.get("subtitle");

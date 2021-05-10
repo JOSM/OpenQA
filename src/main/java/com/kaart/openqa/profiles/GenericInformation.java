@@ -5,12 +5,7 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeSet;
+import java.util.*;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -72,9 +67,9 @@ public abstract class GenericInformation {
 
     /**
      * The possible errors for the class
-     * {@code SortedMap<Integer errorValue, String description>}
+     * {@code NavigableMap<Integer errorValue, String description>}
      */
-    public abstract SortedMap<String, String> getErrors();
+    public abstract NavigableMap<String, String> getErrors();
 
     /**
      * Cache a file for 24 hours
