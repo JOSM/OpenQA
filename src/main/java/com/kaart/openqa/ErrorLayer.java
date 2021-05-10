@@ -168,7 +168,7 @@ public class ErrorLayer extends AbstractModifiableLayer
         List<OsmDataLayer> dataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
         ProgressMonitor progressMonitor = monitor.createSubTaskMonitor(0, false);
         progressMonitor.beginTask(tr("Updating {0} layers", OpenQA.NAME));
-        for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+        for (Map.Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
             if (updateCanceled) {
                 progressMonitor.cancel();
                 break;

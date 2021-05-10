@@ -10,7 +10,6 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -49,9 +48,9 @@ public class OsmoseInformation extends GenericInformation {
     public static final String NAME = "Osmose";
 
     public static final String LAYER_NAME = "Osmose Errors";
-    public static final String BASE_API = "http://osmose.openstreetmap.fr/{0}/api/0.3/";
-    public static final String BASE_IMG = "http://osmose.openstreetmap.fr/{0}/images/markers/marker-b-%s.png";
-    public static final String BASE_ERROR_URL = "http://osmose.openstreetmap.fr/{0}/error/";
+    public static final String BASE_API = "https://osmose.openstreetmap.fr/{0}/api/0.3/";
+    public static final String BASE_IMG = "https://osmose.openstreetmap.fr/images/markers/marker-b-%s.png";
+    public static final String BASE_ERROR_URL = "https://osmose.openstreetmap.fr/{0}/error/";
 
     private static final String ADDITIONAL_INFORMATION = "ADDITIONAL_INFORMATION";
 
@@ -116,6 +115,7 @@ public class OsmoseInformation extends GenericInformation {
         url = url.concat(",").concat(Double.toString(bound.getMinLat()));
         url = url.concat(",").concat(Double.toString(bound.getMaxLon()));
         url = url.concat(",").concat(Double.toString(bound.getMaxLat()));
+        Logging.info("Downloading {0}", url);
         CachedFile cache;
         try {
             cache = GenericInformation.getFile(url, formats.get(type),
@@ -188,25 +188,24 @@ public class OsmoseInformation extends GenericInformation {
         TreeMap<String, String> tErrors = new TreeMap<>();
 
         // TODO move to 0.3 api
-        try (CachedFile cache = new CachedFile(
-                MessageFormat.format("http://osmose.openstreetmap.fr/{0}/api/0.2/meta/items", getLocale()))) {
+        try (CachedFile cache = new CachedFile(MessageFormat.format(BASE_API + "items", getLocale()))) {
             cache.setDestDir(cacheDir);
             JsonParser parser = Json.createParser(cache.getInputStream());
             while (parser.hasNext()) {
                 if (parser.next() == Event.START_OBJECT) {
-                    JsonValue value = parser.getValue();
-                    if (JsonValue.ValueType.OBJECT == value.getValueType()) {
-                        JsonArray array = value.asJsonObject().getJsonArray("items");
-                        for (int i = 0; i < array.size(); i++) {
-                            JsonArray info = array.getJsonArray(i);
-                            String errorNumber = info.getJsonNumber(0).toString();
+                    JsonObject value = parser.getValue().asJsonObject();
+                    JsonArray categories = value.getJsonArray("categories");
+                    for (JsonObject category : categories.getValuesAs(JsonObject.class)) {
+                        JsonArray items = category.getJsonArray("items");
+                        for (JsonObject item : items.getValuesAs(JsonObject.class)) {
+                            String errorNumber = item.getJsonNumber("item").toString();
                             String name;
-                            if (info.get(1) == JsonValue.NULL) {
+                            if (item.get("title") == JsonValue.NULL) {
                                 name = tr("(name missing)");
-                            } else if (info.getJsonObject(1).containsKey(getLocale())) {
-                                name = info.getJsonObject(1).getString(getLocale());
+                            } else if (item.getJsonObject("title").containsKey(getLocale())) {
+                                name = item.getJsonObject("title").getString(getLocale());
                             } else {
-                                name = info.getJsonObject(1).getString("en");
+                                name = item.getJsonObject("title").getString("auto");
                             }
                             tErrors.put(errorNumber, name);
                         }
@@ -234,8 +233,7 @@ public class OsmoseInformation extends GenericInformation {
         NavigableMap<String, String> errors = getErrors(cacheDir);
         JsonParser parser = null;
         // TODO move to 0.3 when equivalent is available
-        try (CachedFile cache = new CachedFile(
-                MessageFormat.format("http://osmose.openstreetmap.fr/{0}/api/0.2/meta/categories", getLocale()))) {
+        try (CachedFile cache = new CachedFile(MessageFormat.format(BASE_API + "items", getLocale()))) {
             cache.setDestDir(cacheDir);
             parser = Json.createParser(cache.getInputStream());
             while (parser.hasNext()) {
@@ -243,17 +241,17 @@ public class OsmoseInformation extends GenericInformation {
                     JsonArray array = parser.getObject().getJsonArray("categories");
                     for (int i = 0; i < array.size(); i++) {
                         JsonObject info = array.getJsonObject(i);
-                        String category = Integer.toString(info.getInt("categorie_id"));
-                        JsonObject menuLang = info.getJsonObject("menu_lang");
+                        String category = Integer.toString(info.getInt("categ"));
                         final String name;
-                        if (menuLang.containsKey(getLocale())) {
-                            name = menuLang.getString(getLocale());
+                        if (!info.containsKey("title")) {
+                            name = tr("No name for this category");
+                        } else if (info.getJsonObject("title").containsKey(getLocale())) {
+                            name = info.getJsonObject("title").getString(getLocale());
                         } else {
-                            // Fall back to English for now.
-                            name = menuLang.getString("en");
+                            name = info.getJsonObject("title").getString("auto");
                         }
                         TreeMap<String, String> catErrors = new TreeMap<>();
-                        JsonArray items = info.getJsonArray("item");
+                        JsonArray items = info.getJsonArray("items");
                         for (int j = 0; j < items.size(); j++) {
                             JsonObject item = items.getJsonObject(j);
                             String nItem = Integer.toString(item.getInt("item"));
