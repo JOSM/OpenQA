@@ -1,3 +1,4 @@
+import groovy.xml.XmlParser
 import net.ltgt.gradle.errorprone.CheckSeverity
 import org.openstreetmap.josm.gradle.plugin.task.GeneratePluginList
 
@@ -5,17 +6,39 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 plugins {
-  id "java"
+  id "com.diffplug.spotless" version "6.2.0"
+  id "com.github.ben-manes.versions" version "0.41.0"
+  id "com.github.spotbugs" version "5.0.5"
+  // id "de.aaschmid.cpd" version "3.3"
   id "eclipse"
   id "jacoco"
+  id "java"
   id "maven-publish"
+  id "net.ltgt.errorprone" version "2.0.2"
+  id "org.openstreetmap.josm" version "0.8.0"
   id "pmd"
-  id "com.diffplug.spotless" version "5.12.4"
-  id "com.github.ben-manes.versions" version "0.38.0"
-  id "com.github.spotbugs" version "4.7.1"
-  id "net.ltgt.errorprone" version "2.0.1"
-  id "org.openstreetmap.josm" version "0.7.1"
-  //id 'de.aaschmid.cpd' version '2.0'
+}
+
+int getJavaVersion() {
+  // We want to use whatever Java version CI has as default
+  def ci = project.hasProperty("isCI") or project.hasProperty("CI") or System.getenv("CI") != null
+  // But we want to override if someone set a specific Java version
+  def javaVersion = System.getenv("JAVA_VERSION")?.isInteger() ? Integer.valueOf(System.getenv("JAVA_VERSION")) : null
+  if (javaVersion != null) {
+    return javaVersion
+  }
+  if (ci) {
+    return Integer.valueOf(JavaVersion.current().getMajorVersion())
+  }
+  return 8
+}
+
+logger.lifecycle("Using Java " + getJavaVersion())
+
+java {
+  toolchain {
+    languageVersion.set(JavaLanguageVersion.of(getJavaVersion()))
+  }
 }
 
 // Set up Errorprone
@@ -40,23 +63,23 @@ def gitlabRepositoryName = "JOSM_OpenQA"
 
 
 def versions = [
-  awaitility: "4.1.0",
-  errorprone: "2.4.0",
-  jacoco: "0.8.5",
+  awaitility: "4.1.1",
+  // Errorprone 2.11 requires Java 11+
+  errorprone: (JavaVersion.toVersion(getJavaVersion()) >= JavaVersion.VERSION_11) ? "2.11.0" : "2.10.0",
+  jacoco: "0.8.7",
   jmockit: "1.49",
-  junit: "5.7.1",
-  pmd: "6.28.0",
-  spotbugs: "4.2.3",
-  wiremock: "2.27.2",
+  junit: "5.8.2",
+  pmd: "6.20.0",
+  spotbugs: "4.5.3",
+  wiremock: "2.32.0",
   findsecbugs: "1.11.0",
 ]
 
 repositories {
-  jcenter()
   mavenCentral()
 }
 dependencies {
-  if (!JavaVersion.current().isJava9Compatible()) {
+  if (!JavaVersion.toVersion(getJavaVersion()).isJava9Compatible()) {
     errorproneJavac("com.google.errorprone:javac:9+181-r4173-1")
   }
   spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${versions.findsecbugs}"
@@ -68,7 +91,7 @@ dependencies {
   testImplementation("org.jmockit:jmockit:${versions.jmockit}")
   testImplementation("com.github.spotbugs:spotbugs-annotations:${versions.spotbugs}")
   testImplementation("org.openstreetmap.josm:josm-unittest:"){changing=true}
-  testImplementation("com.github.tomakehurst:wiremock:${versions.wiremock}")
+  testImplementation("com.github.tomakehurst:wiremock-jre8:${versions.wiremock}")
   testImplementation("org.awaitility:awaitility:${versions.awaitility}")
 }
 
@@ -83,6 +106,8 @@ ivyModule.dependencies.dependency.each {
 test {
   project.afterEvaluate {
     jvmArgs("-javaagent:${classpath.find { it.name.contains("jmockit") }.absolutePath}")
+    jvmArgs("-Djunit.jupiter.extensions.autodetection.enabled=true")
+    jvmArgs("-Djava.awt.headless=true")
   }
   useJUnitPlatform()
   testLogging.exceptionFormat = 'full'
@@ -103,6 +128,18 @@ tasks.processResources {
   from("$projectDir/README.md")
   from("$projectDir/src/resources")
 }
+
+spotless {
+  java {
+    eclipse().configFile "config/josm_formatting.xml"
+    endWithNewline()
+    indentWithSpaces(4)
+    licenseHeader "// License: GPL. For details, see LICENSE file."
+    removeUnusedImports()
+    trimTrailingWhitespace()
+  }
+}
+
 
 josm {
   manifest {
@@ -127,8 +164,8 @@ jacoco {
 jacocoTestReport {
   dependsOn test
   reports {
-    xml.enabled = true
-    html.enabled = true
+    xml.required.set(true)
+    html.required.set(true)
   }
 }
 // TODO uncomment when tests are implemented
@@ -151,57 +188,26 @@ spotbugs {
 }
 spotbugsMain {
   reports {
-    xml.enabled = false
-    html.enabled = true
+    xml.required.set(false)
+    html.required.set(true)
   }
 }
 spotbugsTest {
   reports {
-    xml.enabled = false
-    html.enabled = true
+    xml.required.set(false)
+    html.required.set(true)
   }
 }
 
-task generateSnapshotUpdateSite(type: GeneratePluginList) {
-  dependsOn(tasks.processResources)
+publishing {
+  publications {
+    maven(MavenPublication) {
+      groupId = "org.openstreetmap.josm.plugins"
+      artifactId = archivesBaseName
+      version = project.version
 
-  outputFile = new File(project.buildDir, "snapshot-update-site")
-  versionSuffix = {a -> ""}
-  doFirst {
-    def pluginDownloadUrl = "https://${gitlabGroup}.gitlab.io/${gitlabRepositoryName}/snapshot/master/${archivesBaseName}.jar"
-    it.iconBase64Provider = {
-      def file = new File(sourceSets.main.resources.srcDirs[0], it)
-      if (file.exists()) {
-        def contentType = file.name.endsWith(".svg") ? "svg+xml" : "png"
-        return "data:image/" + contentType + ";base64," + Base64.getEncoder().encodeToString(Files.readAllBytes(Paths.get(file.toURI())));
-      }
+      from components.java
     }
-    it.addPlugin("$archivesBaseName-dev.jar", project.josm.manifest.createJosmPluginJarManifest(), new URL(pluginDownloadUrl))
-  }
-}
-
-project.afterEvaluate {
-  publishing {
-    publications {
-      plugin(MavenPublication) {
-        groupId = "org.openstreetmap.josm.plugins"
-        artifactId = archivesBaseName
-        version = project.version
-
-        from components.java
-      }
-    }
-  }
-}
-
-spotless {
-  java {
-    licenseHeader "// License: GPL. For details, see LICENSE file."
-    removeUnusedImports()
-    endWithNewline()
-    indentWithSpaces(4)
-    eclipse().configFile "config/josm_formatting.xml"
-    trimTrailingWhitespace()
   }
 }
 
