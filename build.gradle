@@ -95,14 +95,6 @@ dependencies {
   testImplementation("org.awaitility:awaitility:${versions.awaitility}")
 }
 
-// Add dependencies from ivy.xml
-def ivyModule = new XmlParser().parse(new File("$projectDir/ivy.xml"))
-logger.info("Dependencies from ivy.xml (added to configuration `packIntoJar`):")
-ivyModule.dependencies.dependency.each {
-  logger.info("  * ${it.@org}:${it.@name}:${it.@rev}")
-  project.dependencies.packIntoJar("${it.@org}:${it.@name}:${it.@rev}")
-}
-
 test {
   project.afterEvaluate {
     jvmArgs("-javaagent:${classpath.find { it.name.contains("jmockit") }.absolutePath}")
