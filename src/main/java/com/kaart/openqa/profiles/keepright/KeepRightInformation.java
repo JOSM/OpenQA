@@ -15,7 +15,10 @@ import java.util.List;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
+import org.apache.commons.jcs3.access.CacheAccess;
+import org.apache.commons.jcs3.engine.behavior.ICompositeCacheAttributes;
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.cache.JCSCacheManager;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
@@ -48,7 +51,14 @@ public class KeepRightInformation extends GenericInformation {
 
     protected static final NavigableMap<String, String> formats = new TreeMap<>();
     protected static final NavigableMap<String, String> errors = new TreeMap<>();
+    private static final CacheAccess<String, ImageIcon> LARGE_ICON_CACHE = JCSCacheManager
+            .getCache("openqa:keepright:largeicons");
     static {
+        final ICompositeCacheAttributes attributes = LARGE_ICON_CACHE.getCacheAttributes();
+        attributes.setUseMemoryShrinker(true);
+        attributes.setMaxMemoryIdleTimeSeconds(10);
+        LARGE_ICON_CACHE.setCacheAttributes(attributes);
+
         errors.put("0", tr("default"));
         errors.put("20", tr("multiple nodes on the same spot"));
         errors.put("30", tr("non-closed areas"));
@@ -213,6 +223,13 @@ public class KeepRightInformation extends GenericInformation {
 
     @Override
     public ImageIcon getIcon(String errorValue, ImageSizes size) {
+        if (ImageSizes.LARGEICON == size) {
+            return LARGE_ICON_CACHE.get(errorValue, () -> this.realGetIcon(errorValue, size));
+        }
+        return realGetIcon(errorValue, size);
+    }
+
+    private ImageIcon realGetIcon(String errorValue, ImageSizes size) {
         try {
             String realErrorValue;
             try {

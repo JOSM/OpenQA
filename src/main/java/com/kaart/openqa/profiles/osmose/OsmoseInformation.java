@@ -37,7 +37,10 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.jcs3.access.CacheAccess;
+import org.apache.commons.jcs3.engine.behavior.ICompositeCacheAttributes;
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.cache.JCSCacheManager;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
@@ -73,6 +76,15 @@ public class OsmoseInformation extends GenericInformation {
     public static final String BASE_ERROR_URL = "https://osmose.openstreetmap.fr/{0}/error/";
 
     private static final String ADDITIONAL_INFORMATION = "ADDITIONAL_INFORMATION";
+    private static final CacheAccess<String, ImageIcon> LARGE_ICON_CACHE = JCSCacheManager
+            .getCache("openqa:osmose:largeicons");
+    static {
+        final ICompositeCacheAttributes attributes = LARGE_ICON_CACHE.getCacheAttributes();
+        attributes.setUseMemoryShrinker(true);
+        attributes.setMaxMemoryIdleTimeSeconds(10);
+        LARGE_ICON_CACHE.setCacheAttributes(attributes);
+    }
+
     private static NavigableMap<String, String> ERROR_MAP;
 
     protected static final NavigableMap<String, String> formats = new TreeMap<>();
@@ -543,6 +555,13 @@ public class OsmoseInformation extends GenericInformation {
 
     @Override
     public ImageIcon getIcon(String errorValue, ImageSizes size) {
+        if (ImageSizes.LARGEICON == size) {
+            return LARGE_ICON_CACHE.get(errorValue, () -> this.realGetIcon(errorValue, size));
+        }
+        return realGetIcon(errorValue, size);
+    }
+
+    private ImageIcon realGetIcon(String errorValue, ImageSizes size) {
         try {
             ImageIcon icon;
             if ("fixed".equals(errorValue)) {
