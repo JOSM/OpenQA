@@ -48,6 +48,7 @@ import org.openstreetmap.josm.actions.mapmode.SelectAction;
 import org.openstreetmap.josm.actions.mapmode.SelectLassoAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.EastNorth;
+import org.openstreetmap.josm.data.osm.DataSelectionListener;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.DataSourceChangeEvent;
 import org.openstreetmap.josm.data.osm.DataSourceListener;
@@ -281,7 +282,7 @@ public class ErrorLayer extends AbstractModifiableLayer
         window.run();
     }
 
-    private class PaintWindow implements Runnable {
+    private class PaintWindow implements DataSelectionListener, Runnable {
         Graphics2D g;
         MapView mv;
 
@@ -384,56 +385,56 @@ public class ErrorLayer extends AbstractModifiableLayer
             int yb = p.y - iconHeight - 1;
             int yt = p.y + (iconHeight / 2) + 2;
             Point pTooltip;
-            JPanel interiorPanel = new JPanel();
-            displayedPanel = new JScrollPane(interiorPanel);
-            displayedPanel.getVerticalScrollBar().setUnitIncrement(30);
-            interiorPanel.setLayout(new BoxLayout(interiorPanel, BoxLayout.Y_AXIS));
 
             if (displayedWindow == null) {
+                JPanel interiorPanel = new JPanel();
+                displayedPanel = new JScrollPane(interiorPanel);
+                displayedPanel.getVerticalScrollBar().setUnitIncrement(30);
+                interiorPanel.setLayout(new BoxLayout(interiorPanel, BoxLayout.Y_AXIS));
                 displayedWindow = new JWindow(MainApplication.getMainFrame());
                 displayedWindow.setAutoRequestFocus(false);
                 displayedWindow.add(displayedPanel);
                 // Forward mouse wheel scroll event to MapMover
                 displayedWindow.addMouseWheelListener(e -> mv.getMapMover()
                         .mouseWheelMoved((MouseWheelEvent) SwingUtilities.convertMouseEvent(displayedWindow, e, mv)));
-            }
-            for (Map.Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                DataSet temporaryDataSet = entry.getValue();
-                GenericInformation type = entry.getKey();
-                if (temporaryDataSet == null)
-                    continue;
-                for (OsmPrimitive osmPrimitive : temporaryDataSet.getSelected()) {
-                    if (!(osmPrimitive instanceof Node))
+                for (Map.Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+                    DataSet temporaryDataSet = entry.getValue();
+                    GenericInformation type = entry.getKey();
+                    if (temporaryDataSet == null)
                         continue;
-                    Node selectedNode = (Node) osmPrimitive;
-                    String text = type.getNodeToolTip(selectedNode);
+                    for (OsmPrimitive osmPrimitive : temporaryDataSet.getSelected()) {
+                        if (!(osmPrimitive instanceof Node))
+                            continue;
+                        Node selectedNode = (Node) osmPrimitive;
+                        String text = type.getNodeToolTip(selectedNode);
 
-                    HtmlPanel htmlPanel = new HtmlPanel(text);
-                    htmlPanel.setBackground(UIManager.getColor("ToolTip.background"));
-                    htmlPanel.setForeground(UIManager.getColor("ToolTip.foreground"));
-                    htmlPanel.setFont(UIManager.getFont("ToolTip.font"));
-                    htmlPanel.setBorder(BorderFactory.createLineBorder(Color.black));
-                    htmlPanel.enableClickableHyperlinks();
-                    JPanel tPanel = new JPanel();
-                    tPanel.setLayout(new BoxLayout(tPanel, BoxLayout.Y_AXIS));
-                    tPanel.add(htmlPanel);
+                        HtmlPanel htmlPanel = new HtmlPanel(text);
+                        htmlPanel.setBackground(UIManager.getColor("ToolTip.background"));
+                        htmlPanel.setForeground(UIManager.getColor("ToolTip.foreground"));
+                        htmlPanel.setFont(UIManager.getFont("ToolTip.font"));
+                        htmlPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+                        htmlPanel.enableClickableHyperlinks();
+                        JPanel tPanel = new JPanel();
+                        tPanel.setLayout(new BoxLayout(tPanel, BoxLayout.Y_AXIS));
+                        tPanel.add(htmlPanel);
 
-                    List<JButton> actions = type.getActions(selectedNode);
-                    JPanel pActions = new JPanel();
-                    double minWidth = 0.0;
-                    for (JButton action : actions) {
-                        pActions.add(action);
-                        minWidth += action.getPreferredSize().getWidth();
+                        List<JButton> actions = type.getActions(selectedNode);
+                        JPanel pActions = new JPanel();
+                        double minWidth = 0.0;
+                        for (JButton action : actions) {
+                            pActions.add(action);
+                            minWidth += action.getPreferredSize().getWidth();
+                        }
+                        Dimension d = pActions.getPreferredSize();
+                        d.setSize(minWidth, d.getHeight());
+                        pActions.setPreferredSize(d);
+                        tPanel.add(pActions);
+                        interiorPanel.add(tPanel);
                     }
-                    Dimension d = pActions.getPreferredSize();
-                    d.setSize(minWidth, d.getHeight());
-                    pActions.setPreferredSize(d);
-                    tPanel.add(pActions);
-                    interiorPanel.add(tPanel);
                 }
             }
 
-            pTooltip = fixPanelSizeAndLocation(mv, interiorPanel, xl, xr, yt, yb);
+            pTooltip = fixPanelSizeAndLocation(mv, (JComponent) displayedPanel.getComponent(0), xl, xr, yt, yb);
 
             Dimension d = displayedPanel.getPreferredSize();
             d.setSize(d.getWidth(), Math.min(d.getHeight(), 450));
@@ -441,7 +442,7 @@ public class ErrorLayer extends AbstractModifiableLayer
             int topMaxHeight = (int) (0.95 * yt);
             int bottomMaxHeight = (int) (0.95 * mv.getHeight() - yb);
             int maxHeight = Math.max(topMaxHeight, bottomMaxHeight);
-            d.setSize(d.getWidth() + 20, Math.min(d.getHeight(), maxHeight));
+            d.setSize(d.getWidth(), Math.min(d.getHeight(), maxHeight));
             displayedPanel.setPreferredSize(d);
 
             displayedWindow.pack();
@@ -515,6 +516,11 @@ public class ErrorLayer extends AbstractModifiableLayer
             Point screenloc = mv.getLocationOnScreen();
             return new Point(screenloc.x + (d.width > rightMaxWidth && d.width <= leftMaxWidth ? xl - d.width : xr),
                     screenloc.y + (d.height > bottomMaxHeight && d.height <= topMaxHeight ? yt - d.height - 10 : yb));
+        }
+
+        @Override
+        public void selectionChanged(SelectionChangeEvent event) {
+            hideNodeWindow();
         }
     }
 
@@ -849,5 +855,4 @@ public class ErrorLayer extends AbstractModifiableLayer
     public void dataSourceChange(DataSourceChangeEvent event) {
         OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
     }
-
 }
