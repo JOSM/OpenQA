@@ -3,12 +3,12 @@ package com.kaart.openqa.profiles;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -47,7 +47,7 @@ public abstract class GenericInformation {
     /** the difference between groups (integer numbers) */
     public static final int GROUP_DIFFERENCE = 10;
 
-    protected String cacheDir;
+    protected final String cacheDir;
 
     public GenericInformation(String cacheDir) {
         this.cacheDir = cacheDir;

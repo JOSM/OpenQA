@@ -3,14 +3,14 @@ package com.kaart.openqa.profiles.keepright;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import javax.swing.JCheckBox;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
 import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.swing.JCheckBox;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 
 import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane;
 import org.openstreetmap.josm.gui.preferences.TabPreferenceSetting;
@@ -90,11 +90,8 @@ public class KeepRightPreferences extends ProfilePreferences {
         for (String error : KeepRightInformation.errors.keySet()) {
             if ("0".equals(error))
                 continue;
-            boolean checked = false;
-            if (prefs.contains(error)) {
-                checked = true;
-            }
-            String errorMessage = "";
+            boolean checked = prefs.contains(error);
+            String errorMessage;
             String baseMessage = "";
             if (Integer.parseInt(error) % 10 == 0) {
                 errorMessage = KeepRightInformation.errors.get(error);

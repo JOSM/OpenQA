@@ -27,6 +27,7 @@ public class OpenQA extends Plugin {
     public String cacheDir;
     public static final String PREF_PREFIX = NAME.toLowerCase().concat(".");
     public static final String PREF_FILETYPE = PREF_PREFIX.concat("filetype");
+    private static String VERSION = "unknown";
 
     public static final String OPENQA_IMAGE = "openqa.svg";
 
@@ -48,6 +49,7 @@ public class OpenQA extends Plugin {
 
     public OpenQA(PluginInformation info) {
         super(info);
+        VERSION = info.localversion;
         try {
             cacheDir = getPluginDirs().getCacheDirectory(true).getCanonicalPath();
         } catch (IOException e) {
@@ -68,7 +70,6 @@ public class OpenQA extends Plugin {
     }
 
     public static String getVersion() {
-        // TODO get the version dynamically
-        return "v0.1.4";
+        return VERSION;
     }
 }

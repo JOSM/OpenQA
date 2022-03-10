@@ -3,18 +3,18 @@ package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
 
 import org.openstreetmap.josm.gui.preferences.DefaultTabPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane;
@@ -34,7 +34,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 
     final String cacheDir;
 
-    ArrayList<ProfilePreferences> tests = new ArrayList<>();
+    final ArrayList<ProfilePreferences> tests = new ArrayList<>();
 
     public OpenQAPreferences(String directory) {
         super(OpenQA.OPENQA_IMAGE, tr("OpenQA"), tr("OpenQA Settings"));

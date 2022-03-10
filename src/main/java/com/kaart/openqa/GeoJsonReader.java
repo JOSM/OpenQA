@@ -3,13 +3,6 @@ package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
-import java.io.InputStream;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -18,6 +11,13 @@ import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
+
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
@@ -259,7 +259,7 @@ public class GeoJsonReader extends AbstractReader {
     }
 
     @Override
-    protected DataSet doParseDataSet(InputStream source, ProgressMonitor progressMonitor) throws IllegalDataException {
+    protected DataSet doParseDataSet(InputStream source, ProgressMonitor progressMonitor) {
         setParser(Json.createParser(source));
         parse();
 

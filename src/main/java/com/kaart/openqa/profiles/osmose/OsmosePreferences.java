@@ -3,6 +3,11 @@ package com.kaart.openqa.profiles.osmose;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
 import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
@@ -10,11 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
-
-import javax.swing.JCheckBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 
 import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane;
 import org.openstreetmap.josm.gui.preferences.TabPreferenceSetting;
@@ -55,20 +55,20 @@ public class OsmosePreferences extends ProfilePreferences {
         for (NavigableMap<String, NavigableMap<String, String>> value : categories.values()) {
             value.values().forEach(errors::putAll);
         }
-        String category = "";
+        String category;
         for (Component component : testPanel.getComponents()) {
             if (component instanceof JLabel) {
                 JLabel label = (JLabel) component;
                 category = label.getText();
                 for (NavigableMap<String, NavigableMap<String, String>> descriptiveCategory : categories.values()) {
-                    if (descriptiveCategory.keySet().contains(category)) {
+                    if (descriptiveCategory.containsKey(category)) {
                         errors = descriptiveCategory.get(category);
                         Logging.info("Category: {0}", category);
                         break;
                     }
                 }
             }
-            if (!(component instanceof JCheckBox) || (component instanceof JLabel))
+            if (!(component instanceof JCheckBox))
                 continue;
             JCheckBox preference = (JCheckBox) component;
             if (preference.isSelected()) {
@@ -104,10 +104,7 @@ public class OsmosePreferences extends ProfilePreferences {
                 Logging.info("Category: {0} {1}", category, categoryNumber);
                 for (String errorNumber : errors.get(categoryNumber).get(category).keySet()) {
                     String baseMessage = "";
-                    boolean checked = false;
-                    if (prefs.contains(errorNumber)) {
-                        checked = true;
-                    }
+                    boolean checked = prefs.contains(errorNumber);
                     String errorMessage = errors.get(categoryNumber).get(category).get(errorNumber);
                     JCheckBox toAdd = new JCheckBox(tr(errorMessage), checked);
                     List<JCheckBox> list = (checkBoxes.get(baseMessage) != null) ? checkBoxes.get(baseMessage)

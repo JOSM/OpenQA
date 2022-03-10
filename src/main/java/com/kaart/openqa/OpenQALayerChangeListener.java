@@ -17,9 +17,7 @@ import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.gui.progress.swing.PleaseWaitProgressMonitor;
-import org.openstreetmap.josm.io.OsmTransferException;
 import org.openstreetmap.josm.tools.Logging;
-import org.xml.sax.SAXException;
 
 import com.kaart.openqa.profiles.keepright.KeepRightInformation;
 import com.kaart.openqa.profiles.osmose.OsmoseInformation;
@@ -29,7 +27,7 @@ import com.kaart.openqa.profiles.osmose.OsmoseInformation;
  *
  */
 public class OpenQALayerChangeListener implements LayerChangeListener {
-    HashMap<OsmDataLayer, OpenQADataSetListener> listeners = new HashMap<>();
+    final HashMap<OsmDataLayer, OpenQADataSetListener> listeners = new HashMap<>();
     private final String cacheDir;
 
     public OpenQALayerChangeListener(String cacheDir) {
@@ -112,7 +110,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
         }
 
         @Override
-        protected void realRun() throws SAXException, IOException, OsmTransferException {
+        protected void realRun() throws IOException {
             if (isCanceled)
                 return;
             List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);

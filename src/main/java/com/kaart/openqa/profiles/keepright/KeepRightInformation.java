@@ -3,6 +3,10 @@ package com.kaart.openqa.profiles.keepright;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import javax.swing.AbstractAction;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
@@ -10,10 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NavigableMap;
 import java.util.TreeMap;
-
-import javax.swing.AbstractAction;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.DataSet;
@@ -46,8 +46,8 @@ public class KeepRightInformation extends GenericInformation {
     public static final String FIXED = "ignore_t";
     public static final String FALSE_POSITIVE = "ignore";
 
-    protected static NavigableMap<String, String> formats = new TreeMap<>();
-    protected static NavigableMap<String, String> errors = new TreeMap<>();
+    protected static final NavigableMap<String, String> formats = new TreeMap<>();
+    protected static final NavigableMap<String, String> errors = new TreeMap<>();
     static {
         errors.put("0", tr("default"));
         errors.put("20", tr("multiple nodes on the same spot"));
@@ -214,7 +214,7 @@ public class KeepRightInformation extends GenericInformation {
     @Override
     public ImageIcon getIcon(String errorValue, ImageSizes size) {
         try {
-            String realErrorValue = "";
+            String realErrorValue;
             try {
                 realErrorValue = "zap" + (Integer.parseInt(errorValue) / 10) * 10;
             } catch (NumberFormatException e) {

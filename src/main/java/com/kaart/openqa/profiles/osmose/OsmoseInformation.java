@@ -3,17 +3,6 @@ package com.kaart.openqa.profiles.osmose;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
-import java.awt.event.ActionEvent;
-import java.io.File;
-import java.io.IOException;
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
-import java.util.stream.Stream;
-
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -25,6 +14,17 @@ import javax.json.stream.JsonParser.Event;
 import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+
+import java.awt.event.ActionEvent;
+import java.io.File;
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
+import java.util.stream.Stream;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -54,7 +54,7 @@ public class OsmoseInformation extends GenericInformation {
 
     private static final String ADDITIONAL_INFORMATION = "ADDITIONAL_INFORMATION";
 
-    protected static NavigableMap<String, String> formats = new TreeMap<>();
+    protected static final NavigableMap<String, String> formats = new TreeMap<>();
 
     public OsmoseInformation(String cacheDir) {
         super(cacheDir);
@@ -158,24 +158,13 @@ public class OsmoseInformation extends GenericInformation {
 
     @Override
     public String buildDownloadErrorList() {
-        StringBuilder list = new StringBuilder();
         List<String> enabled = Config.getPref().getList("openqa.osmose-tests", buildDefaultPref());
-        for (int i = 0; i < enabled.size(); i++) {
-            list.append(enabled.get(i));
-            if (i < enabled.size() - 1) {
-                list.append(",");
-            }
-        }
-        return list.toString();
+        return String.join(",", enabled);
     }
 
     @Override
-    public ArrayList<String> buildDefaultPref() {
-        ArrayList<String> rArray = new ArrayList<>();
-        for (String error : getErrors(cacheDir).keySet()) {
-            rArray.add(error);
-        }
-        return rArray;
+    public List<String> buildDefaultPref() {
+        return new ArrayList<>(getErrors(cacheDir).keySet());
     }
 
     /**
@@ -281,7 +270,7 @@ public class OsmoseInformation extends GenericInformation {
      * @author Taylor Smock
      */
     private static class AdditionalInformation implements Runnable {
-        Node node;
+        final Node node;
 
         AdditionalInformation(Node node) {
             this.node = node;

@@ -4,6 +4,23 @@ package com.kaart.openqa;
 import static org.openstreetmap.josm.tools.I18n.tr;
 import static org.openstreetmap.josm.tools.I18n.trn;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JEditorPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.plaf.basic.BasicHTML;
+import javax.swing.text.View;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -23,23 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Pattern;
-
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JComponent;
-import javax.swing.JEditorPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JWindow;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-import javax.swing.plaf.basic.BasicHTML;
-import javax.swing.text.View;
 
 import org.openstreetmap.josm.actions.mapmode.MapMode;
 import org.openstreetmap.josm.actions.mapmode.SelectAction;
@@ -96,8 +96,8 @@ public class ErrorLayer extends AbstractModifiableLayer
      */
     private static final Pattern SENTENCE_MARKS_EASTERN = Pattern.compile("(\\u3002)([\\p{L}\\p{Punct}])");
 
-    HashMap<GenericInformation, DataSet> dataSets = new HashMap<>();
-    HashMap<GenericInformation, Boolean> enabledSources = new HashMap<>();
+    final HashMap<GenericInformation, DataSet> dataSets = new HashMap<>();
+    final HashMap<GenericInformation, Boolean> enabledSources = new HashMap<>();
 
     private Node displayedNode;
     private JScrollPane displayedPanel;
@@ -244,10 +244,10 @@ public class ErrorLayer extends AbstractModifiableLayer
             GenericInformation currentType = entry.getKey();
             if (currentType.getClass().equals(type.getClass())) {
                 entry.getValue().mergeFrom(newDataSet);
-                break;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     @Override
@@ -329,8 +329,7 @@ public class ErrorLayer extends AbstractModifiableLayer
                 }
             }
             MapMode mode = MainApplication.getMap().mapMode;
-            if (!selectedErrors.isEmpty() && mode != null
-                    && (mode instanceof SelectAction || mode instanceof SelectLassoAction)) {
+            if (!selectedErrors.isEmpty() && (mode instanceof SelectAction || mode instanceof SelectLassoAction)) {
                 final int iconHeight = size.getAdjustedHeight();
                 final int iconWidth = size.getAdjustedWidth();
                 paintSelectedNode(g, mv, iconHeight, iconWidth, selectedErrors);
@@ -541,7 +540,7 @@ public class ErrorLayer extends AbstractModifiableLayer
     }
 
     private class GetClosestNode implements Runnable {
-        MouseEvent e;
+        final MouseEvent e;
 
         GetClosestNode(MouseEvent e) {
             this.e = e;
@@ -577,7 +576,7 @@ public class ErrorLayer extends AbstractModifiableLayer
 
         private void getAdditionalInformation() {
             for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                boolean hasAdditionalInformation = true;
+                boolean hasAdditionalInformation;
                 DataSet ds = entry.getValue();
                 GenericInformation type = entry.getKey();
                 if (ds == null)
@@ -640,7 +639,7 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     private class ToggleSource extends AbstractAction {
         private static final long serialVersionUID = -3530922723120575358L;
-        private transient GenericInformation type;
+        private final transient GenericInformation type;
 
         public ToggleSource(GenericInformation type) {
             this.type = type;
