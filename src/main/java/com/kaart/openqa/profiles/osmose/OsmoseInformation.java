@@ -5,7 +5,9 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 
 import javax.json.Json;
 import javax.json.JsonArray;
+import javax.json.JsonNumber;
 import javax.json.JsonObject;
+import javax.json.JsonReader;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
@@ -16,26 +18,44 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 
 import java.awt.event.ActionEvent;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Objects;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
+import org.openstreetmap.josm.data.osm.OsmPrimitive;
+import org.openstreetmap.josm.data.osm.OsmPrimitiveType;
+import org.openstreetmap.josm.data.osm.PrimitiveId;
+import org.openstreetmap.josm.data.osm.SimplePrimitiveId;
+import org.openstreetmap.josm.data.osm.User;
+import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.openstreetmap.josm.tools.LanguageInfo;
 import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.Utils;
+import org.openstreetmap.josm.tools.date.DateUtils;
 
 import com.kaart.openqa.CachedFile;
 import com.kaart.openqa.profiles.GenericInformation;
@@ -331,13 +351,14 @@ public class OsmoseInformation extends GenericInformation {
     @Override
     public String getNodeToolTip(Node node) {
         StringBuilder sb = new StringBuilder("<html>");
-        sb.append(tr(NAME)).append(": ").append(node.get("title")).append(" - <a href=").append(getBaseErrorUrl())
-                .append(node.get(ERROR_ID)).append('>').append(node.get(ERROR_ID)).append("</a>");
+        sb.append(tr(NAME)).append(": ").append(getTranslatedText(node.get("title"))).append(" - <a href=")
+                .append(getBaseErrorUrl()).append(node.get(ERROR_ID)).append('>').append(node.get(ERROR_ID))
+                .append("</a>");
 
         sb.append("<hr/>");
         String subtitle = node.get("subtitle");
         if (subtitle != null && !subtitle.trim().isEmpty()) {
-            sb.append(node.get("subtitle"));
+            sb.append(getTranslatedText(subtitle));
             sb.append("<hr/>");
         }
         String elements = node.get("elems");
@@ -374,14 +395,92 @@ public class OsmoseInformation extends GenericInformation {
             sb.append(htmlText);
             sb.append("<hr/>");
         }
+        final Collection<OsmPrimitive> primitives = node.hasKey("osm_ids")
+                ? getLatestServerPrimitive(parseOsmIds(node.get("osm_ids")))
+                : Collections.emptyList();
 
-        sb.append("Last updated on ".concat(node.get("update")));
+        sb.append("Issue last updated on ".concat(node.get("update")));
 
-        sb.append("<br/> by ".concat(getUserName(node.get("username"))));
+        if (!primitives.isEmpty()) {
+            sb.append("<br/>").append(tr("Last modified on "));
+            sb.append(primitives.stream().map(OsmPrimitive::getInstant).distinct().map(Date::from)
+                    .map(date -> DateUtils.formatDateTime(date, DateFormat.DEFAULT, DateFormat.DEFAULT))
+                    .collect(Collectors.joining(", ")));
+        }
+        if (node.hasKey("username")) {
+            sb.append("<br/>").append(tr("Last modified by ")).append(getUserName(node.get("username")));
+        } else if (node.hasKey("usernames")) {
+            final List<String> users;
+            try (JsonReader reader = Json
+                    .createReader(new ByteArrayInputStream(node.get("usernames").getBytes(StandardCharsets.UTF_8)))) {
+                JsonArray jsonArray = reader.readArray();
+                users = new ArrayList<>(jsonArray.size());
+                for (JsonString user : jsonArray.getValuesAs(JsonString.class)) {
+                    if (!Utils.isBlank(user.getString())) {
+                        users.add(getUserName(user.getString()));
+                    }
+                }
+            }
+            if (users.isEmpty()) {
+                primitives.stream().map(OsmPrimitive::getUser).distinct().filter(User::isOsmUser).map(User::getName)
+                        .forEach(users::add);
+            }
+            sb.append("<br/>").append(tr("Last modified by ")).append(String.join(", ", users));
+        }
         sb.append("</html>");
         String result = sb.toString();
         Logging.debug(result);
         return result;
+    }
+
+    /**
+     * Get the latest *downloaded, non-modified* server primitive.
+     *
+     * @param primitiveIds The primitive ids to search for
+     * @return The latest primitives
+     */
+    private static Collection<OsmPrimitive> getLatestServerPrimitive(final Collection<PrimitiveId> primitiveIds) {
+        final Collection<DataSet> dataSets = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class)
+                .stream().filter(layer -> layer.isDownloadable() && layer.isUploadable()).map(OsmDataLayer::getDataSet)
+                .collect(Collectors.toSet());
+        return primitiveIds.stream()
+                .map(primitive -> dataSets.stream().map(dataset -> dataset.getPrimitiveById(primitive))
+                        .filter(p -> !p.isModified()).max(Comparator.comparing(OsmPrimitive::getVersion)).orElse(null))
+                .filter(Objects::nonNull).collect(Collectors.toList());
+    }
+
+    /**
+     * Convert a json into OSM ids
+     *
+     * @param json The json to convert
+     * @return The osm ids
+     */
+    private static Collection<PrimitiveId> parseOsmIds(final String json) {
+        final List<PrimitiveId> primitiveIds;
+        try (JsonReader reader = Json.createReader(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)))) {
+            final JsonObject object = reader.readObject();
+            primitiveIds = new ArrayList<>(object.values().stream().filter(JsonArray.class::isInstance)
+                    .map(JsonArray.class::cast).mapToInt(JsonArray::size).sum());
+            if (object.containsKey("relations")) {
+                final JsonArray relations = object.getJsonArray("relations");
+                relations.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
+                        .map(JsonNumber::longValue).map(i -> new SimplePrimitiveId(i, OsmPrimitiveType.RELATION))
+                        .forEach(primitiveIds::add);
+            }
+            if (object.containsKey("ways")) {
+                final JsonArray ways = object.getJsonArray("ways");
+                ways.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
+                        .map(JsonNumber::longValue).map(i -> new SimplePrimitiveId(i, OsmPrimitiveType.WAY))
+                        .forEach(primitiveIds::add);
+            }
+            if (object.containsKey("nodes")) {
+                final JsonArray nodes = object.getJsonArray("nodes");
+                nodes.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
+                        .map(JsonNumber::longValue).map(i -> new SimplePrimitiveId(i, OsmPrimitiveType.NODE))
+                        .forEach(primitiveIds::add);
+            }
+        }
+        return primitiveIds;
     }
 
     @Override
@@ -504,6 +603,11 @@ public class OsmoseInformation extends GenericInformation {
         return getErrors(getCacheDir());
     }
 
+    /**
+     * Get the current locale
+     *
+     * @return The locale to use
+     */
     private static String getLocale() {
         String[] valid = new String[] { "eu", "pt_BR", "uk", "zh_TW", "hu", "en", "ro", "ru", "de", "nb", "lt", "pl",
                 "cs", "it", "es", "fa", "fi", "zh_CN", "ca", "el", "ja", "nl", "fr", "sv", "gl", "pt" };
@@ -511,5 +615,25 @@ public class OsmoseInformation extends GenericInformation {
             return LanguageInfo.getJOSMLocaleCode();
         }
         return "en";
+    }
+
+    /**
+     * Get the translated text, if available
+     *
+     * @param json The json string to parse
+     * @return The translated text
+     */
+    private static String getTranslatedText(final String json) {
+        try (JsonReader reader = Json.createReader(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)))) {
+            final JsonObject object = reader.readObject();
+            final String locale = getLocale();
+            if (object.containsKey(locale)) {
+                return object.getString(locale);
+            }
+            if (object.containsKey("auto")) {
+                return object.getString("auto");
+            }
+        }
+        return json;
     }
 }
