@@ -39,7 +39,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.openstreetmap.josm.actions.mapmode.MapMode;
 import org.openstreetmap.josm.actions.mapmode.SelectAction;
@@ -182,16 +184,22 @@ public class ErrorLayer extends AbstractModifiableLayer
                 if (ds == null || ds.allPrimitives().isEmpty()) {
                     ds = type.getErrors(layer.getDataSet(), progressMonitor);
                 } else {
+                    Map<String, OsmPrimitive> oldPrimitives = ds.allPrimitives().stream()
+                            .filter(prim -> prim.hasKey(GenericInformation.ERROR_ID))
+                            .collect(Collectors.toMap(prim -> prim.get(GenericInformation.ERROR_ID), prim -> prim));
                     DataSet mergeFrom = type.getErrors(layer.getDataSet(), progressMonitor);
-                    for (OsmPrimitive osm : mergeFrom.allPrimitives()) {
-                        OsmPrimitive osm2 = ds.getPrimitiveById(osm.getPrimitiveId());
+                    for (final OsmPrimitive osm : mergeFrom.allPrimitives()) {
+                        OsmPrimitive osm2 = Optional.ofNullable(ds.getPrimitiveById(osm.getPrimitiveId()))
+                                .orElseGet(() -> oldPrimitives.get(osm.get(GenericInformation.ERROR_ID)));
                         mergeFrom.removePrimitive(osm.getPrimitiveId());
                         ds.removePrimitive(osm2);
+
                         if (osm2 != null && osm2.isModified()) {
                             Logging.info("Primitive found");
-                            osm = osm2;
+                            ds.addPrimitive(osm2);
+                        } else {
+                            ds.addPrimitive(osm);
                         }
-                        ds.addPrimitive(osm);
                     }
                 }
                 dataSets.put(type, ds);
