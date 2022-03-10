@@ -6,9 +6,9 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 plugins {
-  id "com.diffplug.spotless" version "6.2.0"
-  id "com.github.ben-manes.versions" version "0.41.0"
-  id "com.github.spotbugs" version "5.0.5"
+  id "com.diffplug.spotless" version "6.3.0"
+  id "com.github.ben-manes.versions" version "0.42.0"
+  id "com.github.spotbugs" version "5.0.6"
   // id "de.aaschmid.cpd" version "3.3"
   id "eclipse"
   id "jacoco"
@@ -63,14 +63,14 @@ def gitlabRepositoryName = "JOSM_OpenQA"
 
 
 def versions = [
-  awaitility: "4.1.1",
+  awaitility: "4.2.0",
   // Errorprone 2.11 requires Java 11+
   errorprone: (JavaVersion.toVersion(getJavaVersion()) >= JavaVersion.VERSION_11) ? "2.11.0" : "2.10.0",
   jacoco: "0.8.7",
   jmockit: "1.49",
   junit: "5.8.2",
   pmd: "6.20.0",
-  spotbugs: "4.5.3",
+  spotbugs: "4.6.0",
   wiremock: "2.32.0",
   findsecbugs: "1.11.0",
 ]
@@ -133,8 +133,10 @@ spotless {
   java {
     eclipse().configFile "config/josm_formatting.xml"
     endWithNewline()
+    importOrder('javax', 'java', 'org', 'com', '')
     indentWithSpaces(4)
     licenseHeader "// License: GPL. For details, see LICENSE file."
+    ratchetFrom("origin/master")
     removeUnusedImports()
     trimTrailingWhitespace()
   }
