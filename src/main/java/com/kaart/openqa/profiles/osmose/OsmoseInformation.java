@@ -53,6 +53,7 @@ public class OsmoseInformation extends GenericInformation {
     public static final String BASE_ERROR_URL = "https://osmose.openstreetmap.fr/{0}/error/";
 
     private static final String ADDITIONAL_INFORMATION = "ADDITIONAL_INFORMATION";
+    private static NavigableMap<String, String> ERROR_MAP;
 
     protected static final NavigableMap<String, String> formats = new TreeMap<>();
 
@@ -174,39 +175,42 @@ public class OsmoseInformation extends GenericInformation {
      * @return NavigableMap&lt;String errorNumber, String errorName&gt;
      */
     public static NavigableMap<String, String> getErrors(String cacheDir) {
-        TreeMap<String, String> tErrors = new TreeMap<>();
+        if (ERROR_MAP == null || ERROR_MAP.isEmpty()) {
+            TreeMap<String, String> tErrors = new TreeMap<>();
 
-        // TODO move to 0.3 api
-        try (CachedFile cache = new CachedFile(MessageFormat.format(BASE_API + "items", getLocale()))) {
-            cache.setDestDir(cacheDir);
-            JsonParser parser = Json.createParser(cache.getInputStream());
-            while (parser.hasNext()) {
-                if (parser.next() == Event.START_OBJECT) {
-                    JsonObject value = parser.getValue().asJsonObject();
-                    JsonArray categories = value.getJsonArray("categories");
-                    for (JsonObject category : categories.getValuesAs(JsonObject.class)) {
-                        JsonArray items = category.getJsonArray("items");
-                        for (JsonObject item : items.getValuesAs(JsonObject.class)) {
-                            String errorNumber = item.getJsonNumber("item").toString();
-                            String name;
-                            if (item.get("title") == JsonValue.NULL) {
-                                name = tr("(name missing)");
-                            } else if (item.getJsonObject("title").containsKey(getLocale())) {
-                                name = item.getJsonObject("title").getString(getLocale());
-                            } else {
-                                name = item.getJsonObject("title").getString("auto");
+            // TODO move to 0.3 api
+            try (CachedFile cache = new CachedFile(MessageFormat.format(BASE_API + "items", getLocale()))) {
+                cache.setDestDir(cacheDir);
+                JsonParser parser = Json.createParser(cache.getInputStream());
+                while (parser.hasNext()) {
+                    if (parser.next() == Event.START_OBJECT) {
+                        JsonObject value = parser.getValue().asJsonObject();
+                        JsonArray categories = value.getJsonArray("categories");
+                        for (JsonObject category : categories.getValuesAs(JsonObject.class)) {
+                            JsonArray items = category.getJsonArray("items");
+                            for (JsonObject item : items.getValuesAs(JsonObject.class)) {
+                                String errorNumber = item.getJsonNumber("item").toString();
+                                String name;
+                                if (item.get("title") == JsonValue.NULL) {
+                                    name = tr("(name missing)");
+                                } else if (item.getJsonObject("title").containsKey(getLocale())) {
+                                    name = item.getJsonObject("title").getString(getLocale());
+                                } else {
+                                    name = item.getJsonObject("title").getString("auto");
+                                }
+                                tErrors.put(errorNumber, name);
                             }
-                            tErrors.put(errorNumber, name);
                         }
                     }
                 }
+                parser.close();
+            } catch (IOException e) {
+                Logging.debug(e.getMessage());
+                tErrors.put("xxxx", "All");
             }
-            parser.close();
-        } catch (IOException e) {
-            Logging.debug(e.getMessage());
-            tErrors.put("xxxx", "All");
+            ERROR_MAP = tErrors;
         }
-        return tErrors;
+        return ERROR_MAP;
     }
 
     /**
