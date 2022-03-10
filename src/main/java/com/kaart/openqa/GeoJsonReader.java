@@ -1,6 +1,24 @@
 // License: GPL. For details, see LICENSE file.
 package com.kaart.openqa;
 
+import static org.openstreetmap.josm.tools.I18n.tr;
+
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonString;
+import javax.json.JsonStructure;
+import javax.json.JsonValue;
+import javax.json.stream.JsonParser;
+import javax.json.stream.JsonParser.Event;
+
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
@@ -13,23 +31,6 @@ import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.AbstractReader;
 import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.tools.Logging;
-
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonString;
-import javax.json.JsonStructure;
-import javax.json.JsonValue;
-import javax.json.stream.JsonParser;
-import javax.json.stream.JsonParser.Event;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-
-import static org.openstreetmap.josm.tools.I18n.tr;
 
 /**
  * Reader that reads GeoJSON files. See https://tools.ietf.org/html/rfc7946 for
@@ -248,9 +249,8 @@ public class GeoJsonReader extends AbstractReader {
                     Logging.warn("The GeoJSON contains an object with property '" + stringJsonValueEntry.getKey()
                             + "' whose value has the unsupported type '" + value.getClass().getSimpleName()
                             + "'. That key-value pair is ignored!");
-                } else if (value.getValueType() == JsonValue.ValueType.NULL) {
-                    tags.put(stringJsonValueEntry.getKey(), null);
                 } else {
+                    // WARNING: DO NOT ADD NULL TO THE TAG MAP!
                     tags.put(stringJsonValueEntry.getKey(), value.toString());
                 }
             }

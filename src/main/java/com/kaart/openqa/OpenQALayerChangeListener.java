@@ -97,7 +97,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
         ErrorLayer layer;
 
         public UpdateLayersTask(String cacheDir, PleaseWaitProgressMonitor monitor) {
-            this(tr("Update {0} Layers", OpenQA.NAME), monitor, true);
+            this(tr("Update {0} Layers", OpenQA.NAME), monitor, false);
             this.cacheDir = cacheDir;
         }
 
