@@ -6,10 +6,8 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 
-import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
@@ -21,7 +19,6 @@ import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane;
 import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane.PreferencePanel;
 import org.openstreetmap.josm.gui.preferences.SubPreferenceSetting;
 import org.openstreetmap.josm.gui.preferences.TabPreferenceSetting;
-import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
 import org.openstreetmap.josm.tools.GBC;
 
 import com.kaart.openqa.profiles.ProfilePreferences;
@@ -44,7 +41,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
     @Override
     public void addGui(PreferenceTabbedPane gui) {
         testPanel = new JPanel();
-        testPanel.setLayout(new BorderLayout());
+        testPanel.setLayout(new GridBagLayout());
         JTabbedPane tp = new JTabbedPane();
         tests.add(new KeepRightPreferences(cacheDir));
         tests.add(new OsmosePreferences(cacheDir));
@@ -55,13 +52,13 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 
             JButton selectNone = new JButton(tr("Select none"));
             selectNone.addActionListener(e -> toggleBoxes(preference, false));
-            JPanel tPanel = new VerticallyScrollablePanel(new GridBagLayout());
-            tPanel.add(selectAll);
+            JPanel tPanel = new JPanel(new GridBagLayout());
+            tPanel.add(selectAll, GBC.std());
             tPanel.add(selectNone, GBC.eol());
-            tPanel.add(subTab);
-            tp.add(preference.getTitle(), new JScrollPane(tPanel));
+            tPanel.add(subTab, GBC.eol().fill());
+            tp.add(preference.getTitle(), tPanel);
         }
-        testPanel.add(tp, BorderLayout.CENTER);
+        testPanel.add(tp, GBC.eol().fill().anchor(GBC.LINE_START));
         PreferencePanel preferenceTab = gui.createPreferenceTab(this);
         preferenceTab.add(testPanel, GBC.eol().fill(GBC.BOTH));
     }

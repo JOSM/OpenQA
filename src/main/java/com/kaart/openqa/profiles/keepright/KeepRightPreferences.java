@@ -105,7 +105,7 @@ public class KeepRightPreferences extends ProfilePreferences {
                     : new ArrayList<>();
             list.add(toAdd);
             checkBoxes.put(baseMessage, list);
-            testPanel.add(toAdd, GBC.eol());
+            testPanel.add(toAdd, GBC.eol().anchor(GBC.LINE_START).fill(GBC.HORIZONTAL));
         }
         return new JScrollPane(testPanel);
     }
