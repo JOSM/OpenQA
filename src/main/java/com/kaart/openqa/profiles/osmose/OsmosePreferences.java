@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Optional;
 import java.util.TreeMap;
 
 import org.openstreetmap.josm.gui.preferences.PreferenceTabbedPane;
@@ -24,6 +25,7 @@ import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.Logging;
 
 import com.kaart.openqa.OpenQA;
+import com.kaart.openqa.profiles.GenericInformation;
 import com.kaart.openqa.profiles.ProfilePreferences;
 
 /**
@@ -72,11 +74,11 @@ public class OsmosePreferences extends ProfilePreferences {
                 continue;
             JCheckBox preference = (JCheckBox) component;
             if (preference.isSelected()) {
-                for (Map.Entry<String, String> entry : errors.entrySet()) {
-                    if (preference.getText().equals(entry.getValue())) {
-                        prefs.add(entry.getKey());
-                        break;
-                    }
+                final String errorNumber = Optional.of(preference.getClientProperty(GenericInformation.ERROR_ID))
+                        .filter(String.class::isInstance).map(String.class::cast)
+                        .orElseThrow(NullPointerException::new);
+                if (errors.containsKey(errorNumber)) {
+                    prefs.add(errorNumber);
                 }
             }
         }
@@ -107,6 +109,7 @@ public class OsmosePreferences extends ProfilePreferences {
                     boolean checked = prefs.contains(errorNumber);
                     String errorMessage = errors.get(categoryNumber).get(category).get(errorNumber);
                     JCheckBox toAdd = new JCheckBox(tr(errorMessage), checked);
+                    toAdd.putClientProperty(GenericInformation.ERROR_ID, errorNumber);
                     List<JCheckBox> list = (checkBoxes.get(baseMessage) != null) ? checkBoxes.get(baseMessage)
                             : new ArrayList<>();
                     list.add(toAdd);
