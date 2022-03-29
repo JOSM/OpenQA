@@ -249,7 +249,7 @@ public class GeoJsonReader extends AbstractReader {
                     Logging.warn("The GeoJSON contains an object with property '" + stringJsonValueEntry.getKey()
                             + "' whose value has the unsupported type '" + value.getClass().getSimpleName()
                             + "'. That key-value pair is ignored!");
-                } else {
+                } else if (value.getValueType() != JsonValue.ValueType.NULL) {
                     // WARNING: DO NOT ADD NULL TO THE TAG MAP!
                     tags.put(stringJsonValueEntry.getKey(), value.toString());
                 }
