@@ -459,7 +459,8 @@ public class OsmoseInformation extends GenericInformation {
                 .collect(Collectors.toSet());
         return primitiveIds.stream()
                 .map(primitive -> dataSets.stream().map(dataset -> dataset.getPrimitiveById(primitive))
-                        .filter(p -> !p.isModified()).max(Comparator.comparing(OsmPrimitive::getVersion)).orElse(null))
+                        .filter(Objects::nonNull).filter(p -> !p.isModified())
+                        .max(Comparator.comparing(OsmPrimitive::getVersion)).orElse(null))
                 .filter(Objects::nonNull).collect(Collectors.toList());
     }
 
