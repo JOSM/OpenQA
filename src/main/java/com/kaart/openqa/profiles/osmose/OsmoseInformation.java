@@ -120,7 +120,7 @@ public class OsmoseInformation extends GenericInformation {
                                 lon = Double.parseDouble(entry.getValue().toString());
                             } else if (entry.getValue() instanceof JsonString) {
                                 node.put(field, ((JsonString) entry.getValue()).getString());
-                            } else {
+                            } else if (!JsonValue.NULL.equals(entry.getValue())) {
                                 node.put(field, entry.getValue().toString());
                             }
                         }
@@ -330,7 +330,7 @@ public class OsmoseInformation extends GenericInformation {
                                 continue;// TODO actually deal with it in json format...
                             if (value.getValueType() == ValueType.STRING) {
                                 node.put(key, info.getString(key));
-                            } else {
+                            } else if (!JsonValue.NULL.equals(value)) {
                                 node.put(key, value.toString());
                             }
                         }
