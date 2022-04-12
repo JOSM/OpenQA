@@ -19,9 +19,6 @@ import org.apache.commons.jcs3.access.CacheAccess;
 import org.apache.commons.jcs3.engine.behavior.ICompositeCacheAttributes;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.cache.JCSCacheManager;
-import org.openstreetmap.josm.data.osm.DataSet;
-import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.io.XmlWriter;
@@ -39,7 +36,7 @@ import com.kaart.openqa.profiles.GenericInformation;
  * @author Taylor Smock
  *
  */
-public class KeepRightInformation extends GenericInformation {
+public class KeepRightInformation extends GenericInformation<Long, KeepRightNode, KeepRightDataSet> {
     public static final String LAYER_NAME = "Keep Right Errors";
     public static final String BASE_API = "https://www.keepright.at/export.php?";
     public static final String BASE_IMG = "https://www.keepright.at/img/%s.png";
@@ -180,25 +177,22 @@ public class KeepRightInformation extends GenericInformation {
         return cache;
     }
 
-    private DataSet getGeoJsonErrors(Bounds bound) {
+    private KeepRightDataSet getGeoJsonErrors(Bounds bound) {
         CachedFile cache = getFile("geojson", bound);
-        DataSet ds = new DataSet();
         try {
-            ds = GeoJsonReader.parseDataSet(cache.getInputStream(), null);
-            for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
-                osmPrimitive.setOsmId(Long.parseLong(osmPrimitive.get(ERROR_ID)), 1);
-            }
+            return GeoJsonReader.parseDataSet(cache.getInputStream(), this::createNewDataSet,
+                    (tags, coor) -> new KeepRightNode(Long.parseLong(tags.get(ERROR_ID)), coor));
         } catch (IllegalDataException | IOException e) {
             Logging.error(e);
         }
-        return ds;
+        return null;
     }
 
     @Override
-    public DataSet getErrors(List<Bounds> bounds, ProgressMonitor inMonitor) {
+    public KeepRightDataSet getErrors(List<Bounds> bounds, ProgressMonitor inMonitor) {
         ProgressMonitor monitor = inMonitor.createSubTaskMonitor(0, false);
         monitor.beginTask(tr("Getting {0} errors", getName()));
-        DataSet returnDataSet = null;
+        KeepRightDataSet returnDataSet = null;
         String windowTitle = tr("Updating {0} information", getName());
         if (bounds.size() > 10) {
             monitor.subTask(windowTitle);
@@ -210,11 +204,11 @@ public class KeepRightInformation extends GenericInformation {
         for (Bounds bound : bounds) {
             if (monitor.isCanceled())
                 break;
-            DataSet ds = getGeoJsonErrors(bound);
+            KeepRightDataSet ds = getGeoJsonErrors(bound);
             if (returnDataSet == null) {
                 returnDataSet = ds;
             } else {
-                returnDataSet.mergeFrom(ds, monitor.createSubTaskMonitor(1, false));
+                returnDataSet.mergeFrom(ds);
             }
         }
         monitor.finishTask();
@@ -272,7 +266,7 @@ public class KeepRightInformation extends GenericInformation {
     }
 
     @Override
-    public String getNodeToolTip(Node node) {
+    public String getNodeToolTip(KeepRightNode node) {
         StringBuilder sb = new StringBuilder("<html>");
         sb.append(tr(getName())).append(": ").append(node.get("title")).append(" - <a href=")
                 .append(String.format(BASE_ERROR_URL, node.get("schema"), node.get(ERROR_ID))).append(">")
@@ -298,7 +292,7 @@ public class KeepRightInformation extends GenericInformation {
     }
 
     @Override
-    public List<JButton> getActions(Node node) {
+    public List<JButton> getActions(KeepRightNode node) {
         JButton fixed = new JButton();
         JButton falsePositive = new JButton();
 
@@ -353,12 +347,17 @@ public class KeepRightInformation extends GenericInformation {
     }
 
     @Override
+    public KeepRightDataSet createNewDataSet() {
+        return new KeepRightDataSet();
+    }
+
+    @Override
     public String getLayerName() {
         return LAYER_NAME;
     }
 
     @Override
-    public String getError(Node node) {
+    public String getError(KeepRightNode node) {
         return node.get("error_type");
     }
 

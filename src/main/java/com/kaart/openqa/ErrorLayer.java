@@ -29,17 +29,18 @@ import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -47,15 +48,15 @@ import org.openstreetmap.josm.actions.mapmode.MapMode;
 import org.openstreetmap.josm.actions.mapmode.SelectAction;
 import org.openstreetmap.josm.actions.mapmode.SelectLassoAction;
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.Data;
 import org.openstreetmap.josm.data.coor.EastNorth;
+import org.openstreetmap.josm.data.osm.BBox;
 import org.openstreetmap.josm.data.osm.DataSelectionListener;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.DataSourceChangeEvent;
 import org.openstreetmap.josm.data.osm.DataSourceListener;
-import org.openstreetmap.josm.data.osm.HighlightUpdateListener;
-import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
+import org.openstreetmap.josm.data.projection.ProjectionRegistry;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
@@ -81,9 +82,44 @@ import org.openstreetmap.josm.tools.bugreport.BugReport;
 import org.openstreetmap.josm.tools.bugreport.ReportedException;
 
 import com.kaart.openqa.profiles.GenericInformation;
+import com.kaart.openqa.profiles.OpenQANode;
+import com.kaart.openqa.profiles.keepright.KeepRightInformation;
+import com.kaart.openqa.profiles.osmose.OsmoseInformation;
 
 public class ErrorLayer extends AbstractModifiableLayer
-        implements MouseListener, HighlightUpdateListener, LayerChangeListener, DataSourceListener {
+        implements MouseListener, MouseMotionListener, LayerChangeListener, DataSourceListener {
+    // This could be a record
+    private static class DataSetPairs<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
+        private final D dataset;
+        private final GenericInformation<I, N, D> genericInformation;
+
+        /**
+         * Constructs a new {@code Pair}.
+         *
+         * @param genericInformation The first item
+         * @param dataset            The second item
+         */
+        public DataSetPairs(GenericInformation<I, N, D> genericInformation, D dataset) {
+            Objects.requireNonNull(genericInformation);
+            this.genericInformation = genericInformation;
+            this.dataset = dataset == null ? genericInformation.createNewDataSet() : dataset;
+        }
+
+        public D dataset() {
+            return this.dataset;
+        }
+
+        public GenericInformation<I, N, D> genericInformation() {
+            return this.genericInformation;
+        }
+
+        public void update(ProgressMonitor progressMonitor, Data data) {
+            progressMonitor.indeterminateSubTask(tr("Updating {0}", genericInformation.getLayerName()));
+            OpenQADataSet<I, N> mergeFrom = genericInformation.getErrors(data, progressMonitor);
+            dataset.mergeFrom(mergeFrom);
+        }
+    }
+
     /**
      * Pattern to detect end of sentences followed by another one, or a link, in
      * western script. Group 1 (capturing): period, interrogation mark, exclamation
@@ -101,10 +137,10 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     private static final String STRING_ACTION_TAKEN = "actionTaken";
 
-    final HashMap<GenericInformation, DataSet> dataSets = new HashMap<>();
-    final HashMap<GenericInformation, Boolean> enabledSources = new HashMap<>();
+    final List<DataSetPairs<?, ?, ?>> dataSets = new ArrayList<>(2);
+    final HashMap<GenericInformation<?, ?, ?>, Boolean> enabledSources = new HashMap<>();
 
-    private Node displayedNode;
+    private OpenQANode<?> displayedNode;
     private JScrollPane displayedPanel;
     private JWindow displayedWindow;
     private PaintWindow window;
@@ -144,8 +180,16 @@ public class ErrorLayer extends AbstractModifiableLayer
                 Object obj = constructor.newInstance(cacheDir);
                 if (!(obj instanceof GenericInformation))
                     continue;
-                GenericInformation info = (GenericInformation) obj;
-                dataSets.put(info, new DataSet());
+                if (obj instanceof OsmoseInformation) {
+                    OsmoseInformation info = (OsmoseInformation) obj;
+                    dataSets.add(new DataSetPairs<>(info, info.createNewDataSet()));
+                } else if (obj instanceof KeepRightInformation) {
+                    KeepRightInformation info = (KeepRightInformation) obj;
+                    dataSets.add(new DataSetPairs<>(info, info.createNewDataSet()));
+                } else {
+                    throw new UnsupportedOperationException("Unknown type: " + obj.getClass().getName());
+                }
+                GenericInformation<?, ?, ?> info = (GenericInformation<?, ?, ?>) obj;
                 enabledSources.put(info, true);
             } catch (InstantiationException | IllegalAccessException | IllegalArgumentException
                     | InvocationTargetException | NoSuchMethodException | SecurityException e) {
@@ -171,7 +215,7 @@ public class ErrorLayer extends AbstractModifiableLayer
         List<OsmDataLayer> dataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
         ProgressMonitor progressMonitor = monitor.createSubTaskMonitor(0, false);
         progressMonitor.beginTask(tr("Updating {0} layers", OpenQA.NAME));
-        for (Map.Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
+        for (DataSetPairs<?, ?, ?> entry : dataSets) {
             if (updateCanceled) {
                 progressMonitor.cancel();
                 break;
@@ -179,34 +223,7 @@ public class ErrorLayer extends AbstractModifiableLayer
             for (OsmDataLayer layer : dataLayers) {
                 if (updateCanceled)
                     break;
-                DataSet ds = entry.getValue();
-                GenericInformation type = entry.getKey();
-                progressMonitor.indeterminateSubTask(tr("Updating {0}", type.getLayerName()));
-                if (ds == null || ds.allPrimitives().isEmpty()) {
-                    ds = type.getErrors(layer.getDataSet(), progressMonitor);
-                } else {
-                    // Synchronize on the ds, so we avoid accidentally adding duplicates.
-                    // See comment 2 on JOSM #22010.
-                    synchronized (ds) {
-                        Map<String, OsmPrimitive> oldPrimitives = ds.allPrimitives().stream()
-                                .filter(prim -> prim.hasKey(GenericInformation.ERROR_ID))
-                                .collect(Collectors.toMap(prim -> prim.get(GenericInformation.ERROR_ID), prim -> prim));
-                        DataSet mergeFrom = type.getErrors(layer.getDataSet(), progressMonitor);
-                        for (final OsmPrimitive osm : mergeFrom.allPrimitives()) {
-                            OsmPrimitive osm2 = Optional.ofNullable(ds.getPrimitiveById(osm.getPrimitiveId()))
-                                    .orElseGet(() -> oldPrimitives.get(osm.get(GenericInformation.ERROR_ID)));
-                            mergeFrom.removePrimitive(osm.getPrimitiveId());
-                            ds.removePrimitive(osm2);
-
-                            if (osm2 != null && osm2.isModified()) {
-                                ds.addPrimitive(osm2);
-                            } else {
-                                ds.addPrimitive(osm);
-                            }
-                        }
-                    }
-                }
-                dataSets.put(type, ds);
+                entry.update(monitor, layer.getData());
             }
         }
         progressMonitor.finishTask();
@@ -222,15 +239,13 @@ public class ErrorLayer extends AbstractModifiableLayer
     }
 
     private void addListeners() {
-        for (DataSet ds : dataSets.values()) {
-            ds.addHighlightUpdateListener(this);
-        }
+        dataSets.forEach(pair -> pair.dataset.addHighlightUpdateListener(this));
     }
 
     @Override
     public synchronized void destroy() {
         MainApplication.getMap().mapView.removeMouseListener(this);
-        for (DataSet ds : dataSets.values()) {
+        for (OpenQADataSet<?, ?> ds : dataSets.stream().map(pair -> pair.dataset).collect(Collectors.toList())) {
             try {
                 if (ds == null)
                     continue;
@@ -251,11 +266,12 @@ public class ErrorLayer extends AbstractModifiableLayer
      * @param newDataSet {@code DataSet} with notes
      * @return true if added
      */
-    public boolean addNotes(GenericInformation type, DataSet newDataSet) {
-        for (Map.Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-            GenericInformation currentType = entry.getKey();
-            if (currentType.getClass().equals(type.getClass())) {
-                entry.getValue().mergeFrom(newDataSet);
+    public <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> boolean addNotes(
+            GenericInformation<I, N, D> type, D newDataSet) {
+        for (DataSetPairs<?, ?, ?> pair : dataSets) {
+            if (pair.genericInformation().getClass().equals(type.getClass())
+                    && pair.dataset().getClass().equals(newDataSet.getClass())) {
+                pair.dataset().mergeFrom(pair.dataset().getClass().cast(newDataSet));
                 return true;
             }
         }
@@ -264,14 +280,12 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     @Override
     public boolean isModified() {
-        boolean modified = false;
-        for (DataSet ds : dataSets.values()) {
-            if (ds != null && ds.isModified()) {
-                modified = true;
-                break;
+        for (DataSetPairs<?, ?, ?> ds : dataSets) {
+            if (ds.dataset().isModified()) {
+                return true;
             }
         }
-        return modified;
+        return false;
     }
 
     @Override
@@ -304,22 +318,21 @@ public class ErrorLayer extends AbstractModifiableLayer
 
         @Override
         public void run() {
-            for (GenericInformation type : dataSets.keySet()) {
-                if (enabledSources.containsKey(type) && Boolean.TRUE.equals(!enabledSources.get(type)))
+            for (DataSetPairs<?, ?, ?> type : dataSets) {
+                if (enabledSources.containsKey(type.genericInformation())
+                        && Boolean.TRUE.equals(!enabledSources.get(type.genericInformation())))
                     continue;
-                realrun(type);
+                realRun(type);
             }
         }
 
-        private void realrun(GenericInformation type) {
+        private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void realRun(DataSetPairs<I, N, D> type) {
             final ImageSizes size = ImageProvider.ImageSizes.LARGEICON;
-            DataSet ds = dataSets.get(type);
-            if (ds == null)
-                return;
-            for (Node node : ds.getNodes()) {
-                Point p = mv.getPoint(node.getCoor());
-                String error = type.getError(node);
-                ImageIcon icon = type.getIcon(error, size);
+            D ds = type.dataset();
+            for (N node : ds.getNodes()) {
+                Point p = mv.getPoint(node);
+                String error = type.genericInformation().getError(node);
+                ImageIcon icon = type.genericInformation().getIcon(error, size);
                 int width = icon.getIconWidth();
                 int height = icon.getIconHeight();
                 g.drawImage(icon.getImage(), p.x - (width / 2), p.y - (height / 2), MainApplication.getMap().mapView);
@@ -328,16 +341,16 @@ public class ErrorLayer extends AbstractModifiableLayer
         }
 
         private void createNodeWindow(Graphics2D g, MapView mv, ImageSizes size) {
-            HashMap<GenericInformation, ArrayList<Node>> selectedErrors = new HashMap<>();
+            Map<GenericInformation<?, ?, ?>, List<OpenQANode<?>>> selectedErrors = new HashMap<>();
 
-            for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                DataSet ds = entry.getValue();
+            for (DataSetPairs<?, ?, ?> entry : dataSets) {
+                OpenQADataSet<?, ?> ds = entry.dataset();
                 if (ds == null)
                     continue;
-                ArrayList<Node> selectedNodes = new ArrayList<>(ds.getSelectedNodes());
+                List<OpenQANode<?>> selectedNodes = new ArrayList<>(ds.getSelectedNodes());
                 selectedNodes.sort(null);
                 if (!selectedNodes.isEmpty()) {
-                    selectedErrors.put(entry.getKey(), selectedNodes);
+                    selectedErrors.put(entry.genericInformation(), selectedNodes);
                 }
             }
             MapMode mode = MainApplication.getMap().mapMode;
@@ -346,10 +359,8 @@ public class ErrorLayer extends AbstractModifiableLayer
                 final int iconWidth = size.getAdjustedWidth();
                 paintSelectedNode(g, mv, iconHeight, iconWidth, selectedErrors);
             } else {
-                for (DataSet ds : dataSets.values()) {
-                    if (ds == null)
-                        continue;
-                    ds.clearSelection();
+                for (DataSetPairs<?, ?, ?> ds : dataSets) {
+                    ds.dataset().clearSelection();
                 }
             }
         }
@@ -366,14 +377,14 @@ public class ErrorLayer extends AbstractModifiableLayer
          *                       information from
          */
         private void paintSelectedNode(Graphics2D g, MapView mv, int iconHeight, int iconWidth,
-                HashMap<GenericInformation, ArrayList<Node>> selectedErrors) {
+                Map<GenericInformation<?, ?, ?>, List<OpenQANode<?>>> selectedErrors) {
             double averageEast = 0.0;
             double averageNorth = 0.0;
             int number = 0;
-            for (List<Node> nodes : selectedErrors.values()) {
-                for (Node node : nodes) {
+            for (List<OpenQANode<?>> nodes : selectedErrors.values()) {
+                for (OpenQANode<?> node : nodes) {
                     number++;
-                    EastNorth ten = node.getEastNorth();
+                    EastNorth ten = node.getEastNorth(ProjectionRegistry.getProjection());
                     averageEast += ten.east();
                     averageNorth += ten.north();
                 }
@@ -400,40 +411,8 @@ public class ErrorLayer extends AbstractModifiableLayer
                 // Forward mouse wheel scroll event to MapMover
                 displayedWindow.addMouseWheelListener(e -> mv.getMapMover()
                         .mouseWheelMoved((MouseWheelEvent) SwingUtilities.convertMouseEvent(displayedWindow, e, mv)));
-                for (Map.Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                    DataSet temporaryDataSet = entry.getValue();
-                    GenericInformation type = entry.getKey();
-                    if (temporaryDataSet == null)
-                        continue;
-                    for (OsmPrimitive osmPrimitive : temporaryDataSet.getSelected()) {
-                        if (!(osmPrimitive instanceof Node))
-                            continue;
-                        Node selectedNode = (Node) osmPrimitive;
-                        String text = type.getNodeToolTip(selectedNode);
-
-                        HtmlPanel htmlPanel = new HtmlPanel(text);
-                        htmlPanel.setBackground(UIManager.getColor("ToolTip.background"));
-                        htmlPanel.setForeground(UIManager.getColor("ToolTip.foreground"));
-                        htmlPanel.setFont(UIManager.getFont("ToolTip.font"));
-                        htmlPanel.setBorder(BorderFactory.createLineBorder(Color.black));
-                        htmlPanel.enableClickableHyperlinks();
-                        JPanel tPanel = new JPanel();
-                        tPanel.setLayout(new BoxLayout(tPanel, BoxLayout.Y_AXIS));
-                        tPanel.add(htmlPanel);
-
-                        List<JButton> actions = type.getActions(selectedNode);
-                        JPanel pActions = new JPanel();
-                        double minWidth = 0.0;
-                        for (JButton action : actions) {
-                            pActions.add(action);
-                            minWidth += action.getPreferredSize().getWidth();
-                        }
-                        Dimension d = pActions.getPreferredSize();
-                        d.setSize(minWidth, d.getHeight());
-                        pActions.setPreferredSize(d);
-                        tPanel.add(pActions);
-                        interiorPanel.add(tPanel);
-                    }
+                for (DataSetPairs<?, ?, ?> entry : dataSets) {
+                    paintSelectedNode(entry, interiorPanel);
                 }
             }
 
@@ -454,6 +433,36 @@ public class ErrorLayer extends AbstractModifiableLayer
             if (!mv.contains(p))
                 hideNodeWindow();
             lastClick = currentClick;
+        }
+
+        private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void paintSelectedNode(
+                DataSetPairs<I, N, D> entry, JPanel interiorPanel) {
+            for (N selectedNode : entry.dataset().getSelectedNodes()) {
+                String text = entry.genericInformation().getNodeToolTip(selectedNode);
+
+                HtmlPanel htmlPanel = new HtmlPanel(text);
+                htmlPanel.setBackground(UIManager.getColor("ToolTip.background"));
+                htmlPanel.setForeground(UIManager.getColor("ToolTip.foreground"));
+                htmlPanel.setFont(UIManager.getFont("ToolTip.font"));
+                htmlPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+                htmlPanel.enableClickableHyperlinks();
+                JPanel tPanel = new JPanel();
+                tPanel.setLayout(new BoxLayout(tPanel, BoxLayout.Y_AXIS));
+                tPanel.add(htmlPanel);
+
+                List<JButton> actions = entry.genericInformation().getActions(selectedNode);
+                JPanel pActions = new JPanel();
+                double minWidth = 0.0;
+                for (JButton action : actions) {
+                    pActions.add(action);
+                    minWidth += action.getPreferredSize().getWidth();
+                }
+                Dimension d = pActions.getPreferredSize();
+                d.setSize(minWidth, d.getHeight());
+                pActions.setPreferredSize(d);
+                tPanel.add(pActions);
+                interiorPanel.add(tPanel);
+            }
         }
 
         /**
@@ -569,16 +578,17 @@ public class ErrorLayer extends AbstractModifiableLayer
          * @param snapDistance The maximum distance to find the closest node
          * @return The closest {@code Node}s
          */
-        private HashMap<GenericInformation, ArrayList<Node>> getClosestNode(Point mousePoint, double snapDistance) {
-            HashMap<GenericInformation, ArrayList<Node>> closestNodes = new HashMap<>();
-            for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                GenericInformation type = entry.getKey();
-                DataSet ds = entry.getValue();
+        private Map<GenericInformation<?, ?, ?>, List<OpenQANode<?>>> getClosestNode(Point mousePoint,
+                double snapDistance) {
+            Map<GenericInformation<?, ?, ?>, List<OpenQANode<?>>> closestNodes = new HashMap<>();
+            for (DataSetPairs<?, ?, ?> entry : dataSets) {
+                GenericInformation<?, ?, ?> type = entry.genericInformation();
+                OpenQADataSet<?, ?> ds = entry.dataset();
                 if (ds == null)
                     continue;
-                ArrayList<Node> closestNode = new ArrayList<>();
-                for (Node node : ds.getNodes()) {
-                    Point notePoint = MainApplication.getMap().mapView.getPoint(node.getBBox().getCenter());
+                List<OpenQANode<?>> closestNode = new ArrayList<>();
+                for (OpenQANode<?> node : ds.getNodes()) {
+                    Point notePoint = MainApplication.getMap().mapView.getPoint(node);
                     if (mousePoint.distance(notePoint) < snapDistance) {
                         closestNode.add(node);
                     }
@@ -591,41 +601,33 @@ public class ErrorLayer extends AbstractModifiableLayer
         }
 
         private void getAdditionalInformation() {
-            for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                boolean hasAdditionalInformation;
-                DataSet ds = entry.getValue();
-                GenericInformation type = entry.getKey();
-                if (ds == null)
-                    continue;
-                for (Node node : ds.getSelectedNodes()) {
-                    hasAdditionalInformation = type.cacheAdditionalInformation(node);
-                    if (!hasAdditionalInformation)
-                        break;
-                }
+            for (DataSetPairs<?, ?, ?> entry : dataSets) {
+                getAdditionalInformation(entry);
+            }
+        }
+
+        private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void getAdditionalInformation(
+                DataSetPairs<I, N, D> entry) {
+            boolean hasAdditionalInformation;
+            D ds = entry.dataset();
+            GenericInformation<I, N, D> type = entry.genericInformation();
+            for (N node : ds.getSelectedNodes()) {
+                hasAdditionalInformation = type.cacheAdditionalInformation(node);
+                if (!hasAdditionalInformation)
+                    break;
             }
         }
 
         @Override
         public void run() {
-            HashMap<GenericInformation, ArrayList<Node>> closestNode = getClosestNode(e.getPoint(), 10);
-            for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                GenericInformation type = entry.getKey();
-                DataSet ds = entry.getValue();
-                if (ds != null) {
-                    if (closestNode.containsKey(type)) {
-                        ds.setSelected(closestNode.get(type));
-                    } else {
-                        ds.clearSelection();
-                    }
-                    if (!closestNode.containsKey(type)) {
-                        ds.clearSelection();
-                    }
-                }
+            Map<GenericInformation<?, ?, ?>, List<OpenQANode<?>>> closestNode = getClosestNode(e.getPoint(), 10);
+            for (DataSetPairs<?, ?, ?> entry : dataSets) {
+                selectNode(closestNode, entry);
             }
             boolean gotNode = false;
             if (displayedNode != null) {
-                for (DataSet ds : dataSets.values()) {
-                    if (ds != null && ds.containsNode(displayedNode)) {
+                for (DataSetPairs<?, ?, ?> ds : dataSets) {
+                    if (ds != null && ds.dataset().containsNode(displayedNode)) {
                         gotNode = true;
                         break;
                     }
@@ -638,6 +640,20 @@ public class ErrorLayer extends AbstractModifiableLayer
                 invalidate();
             }
         }
+
+        private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void selectNode(
+                Map<GenericInformation<?, ?, ?>, List<OpenQANode<?>>> closestNode, DataSetPairs<I, N, D> entry) {
+            GenericInformation<I, N, D> type = entry.genericInformation();
+            D ds = entry.dataset();
+            if (closestNode.containsKey(type)) {
+                ds.setSelected((List<N>) closestNode.get(type));
+            } else {
+                ds.clearSelection();
+            }
+            if (!closestNode.containsKey(type)) {
+                ds.clearSelection();
+            }
+        }
     }
 
     @Override
@@ -647,7 +663,7 @@ public class ErrorLayer extends AbstractModifiableLayer
         actions.add(LayerListDialog.getInstance().createDeleteLayerAction());
         actions.add(new LayerListPopup.InfoAction(this));
         actions.add(new ForceClear());
-        for (GenericInformation type : enabledSources.keySet()) {
+        for (GenericInformation<?, ?, ?> type : enabledSources.keySet()) {
             actions.add(new ToggleSource(type));
         }
         return actions.toArray(new Action[0]);
@@ -655,9 +671,9 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     private class ToggleSource extends AbstractAction {
         private static final long serialVersionUID = -3530922723120575358L;
-        private final transient GenericInformation type;
+        private final transient GenericInformation<?, ?, ?> type;
 
-        public ToggleSource(GenericInformation type) {
+        public ToggleSource(GenericInformation<?, ?, ?> type) {
             this.type = type;
             if (Boolean.FALSE.equals(enabledSources.get(type))) {
                 new ImageProvider("warning-small").getResource().attachImageIcon(this, true);
@@ -691,23 +707,22 @@ public class ErrorLayer extends AbstractModifiableLayer
             if (!directory.mkdirs()) {
                 throw new JosmRuntimeException(tr("Could not create directory {0}", directory));
             }
-            for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                DataSet ds = entry.getValue();
-                if (ds == null) {
-                    continue;
-                }
-                DataSet temporaryDataSet = new DataSet();
-                for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
-                    if (osmPrimitive.hasKey(STRING_ACTION_TAKEN)) {
-                        ds.removePrimitive(osmPrimitive);
-                        temporaryDataSet.addPrimitive(osmPrimitive);
-                    }
-                }
-                ds.clear();
-                ds.mergeFrom(temporaryDataSet);
-                dataSets.put(entry.getKey(), ds);
-            }
+            dataSets.forEach(this::forceClear);
             OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+        }
+
+        private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void forceClear(
+                DataSetPairs<I, N, D> entry) {
+            D ds = entry.dataset();
+            D temporaryDataSet = entry.genericInformation().createNewDataSet();
+            for (N osmPrimitive : ds.allPrimitives()) {
+                if (osmPrimitive.hasKey(STRING_ACTION_TAKEN)) {
+                    ds.removePrimitive(osmPrimitive);
+                    temporaryDataSet.addPrimitive(osmPrimitive);
+                }
+            }
+            ds.clear();
+            ds.mergeFrom(temporaryDataSet);
         }
 
     }
@@ -734,10 +749,8 @@ public class ErrorLayer extends AbstractModifiableLayer
     @Override
     public String getToolTipText() {
         int size = 0;
-        for (DataSet ds : dataSets.values()) {
-            if (ds == null)
-                continue;
-            size += ds.getNodes().size();
+        for (DataSetPairs<?, ?, ?> ds : dataSets) {
+            size += ds.dataset().getNodes().size();
         }
         return trn("{0} {1} note", "{0} {1} notes", size, size, OpenQA.NAME);
     }
@@ -746,19 +759,17 @@ public class ErrorLayer extends AbstractModifiableLayer
     public void mergeFrom(Layer from) {
         if (from instanceof ErrorLayer) {
             ErrorLayer efrom = (ErrorLayer) from;
-            for (Entry<GenericInformation, DataSet> eEntry : efrom.dataSets.entrySet()) {
-                GenericInformation type = eEntry.getKey();
+            for (DataSetPairs<?, ?, ?> eEntry : efrom.dataSets) {
                 boolean merged = false;
-                for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                    GenericInformation current = entry.getKey();
-                    if (type.getClass().equals(current.getClass())) {
-                        entry.getValue().mergeFrom(eEntry.getValue());
+                for (DataSetPairs<?, ?, ?> entry : dataSets) {
+                    if (entry.dataset().getClass().isInstance(eEntry.dataset())) {
+                        entry.dataset().mergeFrom(entry.dataset.getClass().cast(eEntry.dataset()));
                         merged = true;
                         break;
                     }
                 }
                 if (!merged) {
-                    dataSets.put(type, efrom.dataSets.get(type));
+                    dataSets.add(eEntry);
                 }
             }
         }
@@ -771,9 +782,9 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     @Override
     public void visitBoundingBox(BoundingXYVisitor v) {
-        for (DataSet ds : dataSets.values()) {
-            for (OsmPrimitive osm : ds.allPrimitives()) {
-                v.visit(osm.getBBox().getCenter());
+        for (DataSetPairs<?, ?, ?> ds : dataSets) {
+            for (OpenQANode<?> osm : ds.dataset().allPrimitives()) {
+                v.visit(osm);
             }
         }
 
@@ -782,8 +793,8 @@ public class ErrorLayer extends AbstractModifiableLayer
     @Override
     public Object getInfoComponent() {
         int size = 0;
-        for (DataSet ds : dataSets.values()) {
-            size += ds.allPrimitives().size();
+        for (DataSetPairs<?, ?, ?> ds : dataSets) {
+            size += ds.dataset().allPrimitives().size();
         }
         StringBuilder sb = new StringBuilder();
         sb.append(tr("Keep Right Layer")).append('\n').append(tr("Total notes")).append(' ').append(size);
@@ -811,19 +822,27 @@ public class ErrorLayer extends AbstractModifiableLayer
     }
 
     @Override
-    public void highlightUpdated(HighlightUpdateEvent e) {
-        for (OsmPrimitive osmPrimitive : e.getDataSet().allPrimitives()) {
-            if (osmPrimitive instanceof Node && (osmPrimitive.hasKey(STRING_ACTION_TAKEN)
-                    || "false".equals(osmPrimitive.get(STRING_ACTION_TAKEN)))) {
-                Node node = (Node) osmPrimitive;
-                for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
-                    if (!entry.getValue().containsNode(node))
-                        continue;
-                    entry.getKey().getNodeToolTip(node);
-                    if (!osmPrimitive.hasKey(STRING_ACTION_TAKEN)) {
-                        osmPrimitive.put(STRING_ACTION_TAKEN, "true");
-                    }
-                }
+    public void mouseDragged(MouseEvent e) {
+        // Do nothing
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        final BBox location = new BBox(MainApplication.getMap().mapView.getLatLon(e.getX(), e.getY()));
+        for (DataSetPairs<?, ?, ?> entry : this.dataSets) {
+            highlightUpdated(location, entry);
+        }
+    }
+
+    private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void highlightUpdated(BBox location,
+            DataSetPairs<I, N, D> entry) {
+        // FIXME
+        Collection<N> nodes = entry.dataset().searchNodes(location);
+
+        for (N node : nodes) {
+            entry.genericInformation().getNodeToolTip(node);
+            if (!node.hasKey(STRING_ACTION_TAKEN)) {
+                node.put(STRING_ACTION_TAKEN, "true");
             }
         }
     }

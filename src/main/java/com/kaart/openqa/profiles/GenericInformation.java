@@ -1,22 +1,23 @@
 // License: GPL. For details, see LICENSE file.
 package com.kaart.openqa.profiles;
 
-import static org.openstreetmap.josm.tools.I18n.tr;
-
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
 
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.Data;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.BBox;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
-import org.openstreetmap.josm.data.osm.Relation;
 import org.openstreetmap.josm.data.osm.User;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
@@ -30,12 +31,13 @@ import org.openstreetmap.josm.tools.Logging;
 import com.kaart.openqa.CachedFile;
 import com.kaart.openqa.ErrorLayer;
 import com.kaart.openqa.OpenQA;
+import com.kaart.openqa.OpenQADataSet;
 
 /**
  * @author Taylor Smock
  *
  */
-public abstract class GenericInformation {
+public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
     /** The subdirectory to store the data. This can be deleted at any time. */
     public static final String DATA_SUB_DIR = "data";
     /** The subdirectory to store the images. This is usually not deleted. */
@@ -49,7 +51,7 @@ public abstract class GenericInformation {
 
     protected final String cacheDir;
 
-    public GenericInformation(String cacheDir) {
+    protected GenericInformation(String cacheDir) {
         this.cacheDir = cacheDir;
     }
 
@@ -108,7 +110,7 @@ public abstract class GenericInformation {
      * @return A new {@code DataSet} that has error information for the
      *         {@code bounds}
      */
-    public DataSet getErrors(DataSet dataSet, ProgressMonitor progressMonitor) {
+    public D getErrors(Data dataSet, ProgressMonitor progressMonitor) {
         List<Bounds> bounds = dataSet.getDataSourceBounds();
         if (bounds.isEmpty()) {
             bounds = getDefaultBounds(dataSet, progressMonitor.createSubTaskMonitor(0, false));
@@ -124,7 +126,7 @@ public abstract class GenericInformation {
      *                        progress
      * @return A new {@code Layer} that has error information for the {@code bounds}
      */
-    public abstract DataSet getErrors(List<Bounds> bounds, ProgressMonitor progressMonitor);
+    public abstract D getErrors(List<Bounds> bounds, ProgressMonitor progressMonitor);
 
     /**
      * Get the bounds for a dataSet
@@ -133,56 +135,8 @@ public abstract class GenericInformation {
      * @param monitor the ProgressMonitor with which to see progress with
      * @return The bounds that encompasses the @{code DataSet}
      */
-    public static List<Bounds> getDefaultBounds(DataSet dataSet, ProgressMonitor monitor) {
-        if (false) {
-            monitor.beginTask(tr("Building default bounds"), dataSet.allPrimitives().size());
-            List<BBox> bboxes = new ArrayList<>();
-            double bboxMaxSize = 10000000;
-            // Ensure that we go through a dataset predictably
-            TreeSet<OsmPrimitive> treeSet = new TreeSet<>(dataSet.allPrimitives());
-            for (OsmPrimitive osm : treeSet) {
-                if (monitor.isCanceled())
-                    break;
-                monitor.worked(1);
-                // Don't look at relations -- they can get really large, really fast.
-                if (!(osm instanceof Relation)) {
-                    boolean added = false;
-                    BBox smallestBBox = null;
-                    BBox osmBBox = osm.getBBox();
-                    for (BBox bound : bboxes) {
-                        if (bound.bounds(osmBBox) && bound.isValid()) {
-                            // Since osmBBox is entirely within the bound, don't add it.
-                            added = true;
-                            smallestBBox = bound;
-                            break;
-                        }
-                        BBox tBound = new BBox(bound);
-                        tBound.add(osmBBox);
-                        double area = getArea(tBound);
-                        if (area < bboxMaxSize && area < getArea(smallestBBox)) {
-                            smallestBBox = bound;
-                        }
-                    }
-                    if (!added && smallestBBox == null) {
-                        bboxes.add(osmBBox);
-                    } else if (!added && smallestBBox != null) {
-                        smallestBBox.add(osmBBox);
-                        if (!bboxes.contains(smallestBBox))
-                            bboxes.add(smallestBBox);
-                    }
-                }
-            }
-
-            List<Bounds> rBounds = new ArrayList<>();
-            for (BBox bound : bboxes) {
-                Bounds rBound = new Bounds(bound.getBottomRight());
-                rBound.extend(bound.getTopLeft());
-                rBounds.add(rBound);
-            }
-            monitor.finishTask();
-            return rBounds;
-        }
-        return Collections.emptyList();
+    public static List<Bounds> getDefaultBounds(Data dataSet, ProgressMonitor monitor) {
+        return dataSet.getDataSourceBounds();
     }
 
     /**
@@ -222,7 +176,7 @@ public abstract class GenericInformation {
      * @param node {@code Node} to get information from
      * @return {@code String} with the information in HTML format
      */
-    public abstract String getNodeToolTip(Node node);
+    public abstract String getNodeToolTip(N node);
 
     /**
      * Cache additional information for a node
@@ -230,7 +184,7 @@ public abstract class GenericInformation {
      * @param node to get information from
      * @return true if there is additional information
      */
-    public boolean cacheAdditionalInformation(Node node) {
+    public boolean cacheAdditionalInformation(N node) {
         return false;
     }
 
@@ -297,7 +251,7 @@ public abstract class GenericInformation {
      * @param node {@code Node} with the information
      * @return a {@code String} with the error id
      */
-    public abstract String getError(Node node);
+    public abstract String getError(N node);
 
     /**
      * Get the possible actions for a error node
@@ -306,7 +260,7 @@ public abstract class GenericInformation {
      * @return A defaultDownloadTypes of {@code JButton}s with associated actions to
      *         add to a dialog
      */
-    public abstract List<JButton> getActions(Node selectedNode);
+    public abstract List<JButton> getActions(N selectedNode);
 
     /**
      * Redraw error layers
@@ -319,6 +273,13 @@ public abstract class GenericInformation {
             layer.invalidate();
         }
     }
+
+    /**
+     * Create a new dataset
+     *
+     * @return The dataset to store information in
+     */
+    public abstract D createNewDataSet();
 
     protected static class SendInformation implements Runnable {
         final String url;

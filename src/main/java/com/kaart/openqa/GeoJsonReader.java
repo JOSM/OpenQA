@@ -13,40 +13,58 @@ import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
 
 import java.io.InputStream;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
-import org.openstreetmap.josm.data.coor.LatLon;
-import org.openstreetmap.josm.data.osm.DataSet;
-import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.data.osm.OsmPrimitive;
-import org.openstreetmap.josm.data.osm.Relation;
-import org.openstreetmap.josm.data.osm.RelationMember;
-import org.openstreetmap.josm.data.osm.Way;
-import org.openstreetmap.josm.gui.progress.NullProgressMonitor;
-import org.openstreetmap.josm.gui.progress.ProgressMonitor;
-import org.openstreetmap.josm.io.AbstractReader;
+import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.tools.Logging;
+
+import com.kaart.openqa.profiles.OpenQANode;
 
 /**
  * Reader that reads GeoJSON files. See https://tools.ietf.org/html/rfc7946 for
  * more information.
  */
-public class GeoJsonReader extends AbstractReader {
+public class GeoJsonReader<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
+
+    // this could be a record class
+    private static final class LL implements ILatLon {
+        private final double lon;
+        private final double lat;
+
+        LL(double lat, double lon) {
+            this.lat = lat;
+            this.lon = lon;
+        }
+
+        @Override
+        public double lon() {
+            return this.lon;
+        }
+
+        @Override
+        public double lat() {
+            return this.lat;
+        }
+    }
 
     private static final String COORDINATES = "coordinates";
     private static final String FEATURES = "features";
     private static final String PROPERTIES = "properties";
     private static final String GEOMETRY = "geometry";
     private static final String TYPE = "type";
+    private final Supplier<D> dataSetSupplier;
+    private final BiFunction<Map<String, String>, ILatLon, N> nodeCreator;
     private JsonParser parser;
+    private D ds;
 
-    GeoJsonReader() {
+    GeoJsonReader(Supplier<D> dataSetSupplier, BiFunction<Map<String, String>, ILatLon, N> nodeCreator) {
         // Restricts visibility
+        this.dataSetSupplier = dataSetSupplier;
+        this.nodeCreator = nodeCreator;
     }
 
     private void setParser(final JsonParser parser) {
@@ -106,20 +124,11 @@ public class GeoJsonReader extends AbstractReader {
             parsePoint(feature, geometry.getJsonArray(COORDINATES));
             break;
         case "MultiPoint":
-            parseMultiPoint(feature, geometry);
-            break;
         case "LineString":
-            parseLineString(feature, geometry.getJsonArray(COORDINATES));
-            break;
         case "MultiLineString":
-            parseMultiLineString(feature, geometry);
-            break;
         case "Polygon":
-            parsePolygon(feature, geometry.getJsonArray(COORDINATES));
-            break;
         case "MultiPolygon":
-            parseMultiPolygon(feature, geometry);
-            break;
+            throw new UnsupportedOperationException(geometry.getString(TYPE) + " not supported");
         case "GeometryCollection":
             parseGeometryCollection(feature, geometry);
             break;
@@ -131,104 +140,15 @@ public class GeoJsonReader extends AbstractReader {
     private void parsePoint(final JsonObject feature, final JsonArray coordinates) {
         double lat = coordinates.getJsonNumber(1).doubleValue();
         double lon = coordinates.getJsonNumber(0).doubleValue();
-        Node node = createNode(lat, lon);
-        fillTagsFromFeature(feature, node);
+        createNode(getTags(feature), lat, lon);
     }
 
-    private void parseMultiPoint(final JsonObject feature, final JsonObject geometry) {
-        JsonArray coordinates = geometry.getJsonArray(COORDINATES);
-        for (JsonValue coordinate : coordinates) {
-            parsePoint(feature, coordinate.asJsonArray());
+    private void createNode(final Map<String, String> tags, final double lat, final double lon) {
+        final N node = this.nodeCreator.apply(tags, new LL(lat, lon));
+        if (node != null) {
+            node.setKeys(tags);
         }
-    }
-
-    private void parseLineString(final JsonObject feature, final JsonArray coordinates) {
-        if (coordinates.isEmpty()) {
-            return;
-        }
-        createWay(coordinates, false).ifPresent(way -> fillTagsFromFeature(feature, way));
-    }
-
-    private void parseMultiLineString(final JsonObject feature, final JsonObject geometry) {
-        JsonArray coordinates = geometry.getJsonArray(COORDINATES);
-        for (JsonValue coordinate : coordinates) {
-            parseLineString(feature, coordinate.asJsonArray());
-        }
-    }
-
-    private void parsePolygon(final JsonObject feature, final JsonArray coordinates) {
-        if (coordinates.size() == 1) {
-            createWay(coordinates.getJsonArray(0), true).ifPresent(way -> fillTagsFromFeature(feature, way));
-        } else if (coordinates.size() > 1) {
-            // create multipolygon
-            final Relation multipolygon = new Relation();
-            multipolygon.put(TYPE, "multipolygon");
-            createWay(coordinates.getJsonArray(0), true)
-                    .ifPresent(way -> multipolygon.addMember(new RelationMember("outer", way)));
-
-            for (JsonValue interiorRing : coordinates.subList(1, coordinates.size())) {
-                createWay(interiorRing.asJsonArray(), true)
-                        .ifPresent(way -> multipolygon.addMember(new RelationMember("inner", way)));
-            }
-
-            fillTagsFromFeature(feature, multipolygon);
-            getDataSet().addPrimitive(multipolygon);
-        }
-    }
-
-    private void parseMultiPolygon(final JsonObject feature, final JsonObject geometry) {
-        JsonArray coordinates = geometry.getJsonArray(COORDINATES);
-        for (JsonValue coordinate : coordinates) {
-            parsePolygon(feature, coordinate.asJsonArray());
-        }
-    }
-
-    private Node createNode(final double lat, final double lon) {
-        final Node node = new Node(new LatLon(lat, lon));
         getDataSet().addPrimitive(node);
-        return node;
-    }
-
-    private Optional<Way> createWay(final JsonArray coordinates, final boolean autoClose) {
-        if (coordinates.isEmpty()) {
-            return Optional.empty();
-        }
-
-        final List<LatLon> latlons = coordinates.stream().map(coordinate -> {
-            final JsonArray jsonValues = coordinate.asJsonArray();
-            return new LatLon(jsonValues.getJsonNumber(1).doubleValue(), jsonValues.getJsonNumber(0).doubleValue());
-        }).collect(Collectors.toList());
-
-        final int size = latlons.size();
-        final boolean doAutoclose;
-        if (size > 1) {
-            if (latlons.get(0).equals(latlons.get(size - 1))) {
-                // Remove last coordinate, but later add first node to the end
-                latlons.remove(size - 1);
-                doAutoclose = true;
-            } else {
-                doAutoclose = autoClose;
-            }
-        } else {
-            doAutoclose = false;
-        }
-
-        final Way way = new Way();
-        way.setNodes(latlons.stream().map(Node::new).collect(Collectors.toList()));
-        if (doAutoclose) {
-            way.addNode(way.getNode(0));
-        }
-
-        way.getNodes().stream().distinct().forEach(it -> getDataSet().addPrimitive(it));
-        getDataSet().addPrimitive(way);
-
-        return Optional.of(way);
-    }
-
-    private void fillTagsFromFeature(final JsonObject feature, final OsmPrimitive primitive) {
-        if (feature != null) {
-            primitive.setKeys(getTags(feature));
-        }
     }
 
     private void parseUnknown(final JsonObject object) {
@@ -258,28 +178,32 @@ public class GeoJsonReader extends AbstractReader {
         return tags;
     }
 
-    @Override
-    protected DataSet doParseDataSet(InputStream source, ProgressMonitor progressMonitor) {
+    protected D doParseDataSet(InputStream source) {
+        this.ds = this.dataSetSupplier.get();
         setParser(Json.createParser(source));
         parse();
 
         return getDataSet();
     }
 
+    private D getDataSet() {
+        return this.ds;
+    }
+
     /**
      * Parse the given input source and return the dataset.
      *
-     * @param source          the source input stream. Must not be null.
-     * @param progressMonitor the progress monitor. If null,
-     *                        {@link NullProgressMonitor#INSTANCE} is assumed
+     * @param source the source input stream. Must not be null.
      * @return the dataset with the parsed data
      * @throws IllegalDataException     if an error was found while parsing the data
      *                                  from the source
      * @throws IllegalArgumentException if source is null
      */
-    public static DataSet parseDataSet(InputStream source, ProgressMonitor progressMonitor)
+    public static <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> D parseDataSet(InputStream source,
+            final Supplier<D> dataSetSupplier, BiFunction<Map<String, String>, ILatLon, N> nodeCreator)
             throws IllegalDataException {
-        return new GeoJsonReader().doParseDataSet(source, progressMonitor);
+        final GeoJsonReader<I, N, D> gjr = new GeoJsonReader<>(dataSetSupplier, nodeCreator);
+        return gjr.doParseDataSet(source);
     }
 
 }

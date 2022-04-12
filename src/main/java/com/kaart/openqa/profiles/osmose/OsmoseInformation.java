@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -42,13 +43,12 @@ import org.apache.commons.jcs3.access.CacheAccess;
 import org.apache.commons.jcs3.engine.behavior.ICompositeCacheAttributes;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.cache.JCSCacheManager;
-import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
-import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.OsmPrimitiveType;
 import org.openstreetmap.josm.data.osm.PrimitiveId;
 import org.openstreetmap.josm.data.osm.SimplePrimitiveId;
+import org.openstreetmap.josm.data.osm.TagMap;
 import org.openstreetmap.josm.data.osm.User;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
@@ -63,13 +63,14 @@ import org.openstreetmap.josm.tools.Utils;
 import org.openstreetmap.josm.tools.date.DateUtils;
 
 import com.kaart.openqa.CachedFile;
+import com.kaart.openqa.OpenQADataSet;
 import com.kaart.openqa.profiles.GenericInformation;
 
 /**
  * @author Taylor Smock
  *
  */
-public class OsmoseInformation extends GenericInformation {
+public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, OpenQADataSet<UUID, OsmoseNode>> {
     public static final String NAME = "Osmose";
 
     public static final String LAYER_NAME = "Osmose Errors";
@@ -87,7 +88,7 @@ public class OsmoseInformation extends GenericInformation {
         LARGE_ICON_CACHE.setCacheAttributes(attributes);
     }
 
-    private static NavigableMap<String, String> ERROR_MAP;
+    private static final NavigableMap<String, String> ERROR_MAP = new TreeMap<>();
 
     protected static final NavigableMap<String, String> formats = new TreeMap<>();
 
@@ -100,16 +101,15 @@ public class OsmoseInformation extends GenericInformation {
         return NAME;
     }
 
-    private DataSet getGeoJsonErrors(Bounds bound) {
-        CachedFile cache = getFile(bound);
-        DataSet ds = new DataSet();
-        try (JsonParser json = Json.createParser(cache.getInputStream())) {
+    private OsmoseDataSet getGeoJsonErrors(Bounds bound) {
+        OsmoseDataSet ds = createNewDataSet();
+        try (CachedFile cache = getFile(bound); JsonParser json = Json.createParser(cache.getInputStream())) {
             while (json.hasNext()) {
                 if (json.next() == Event.START_OBJECT) {
                     JsonObject jobject = json.getObject();
                     JsonArray errors = jobject.getJsonArray("issues");
                     for (JsonObject error : errors.getValuesAs(JsonObject.class)) {
-                        Node node = new Node();
+                        final TagMap tagMap = new TagMap();
                         double lat = Double.MAX_VALUE;
                         double lon = Double.MAX_VALUE;
                         for (Map.Entry<String, JsonValue> entry : error.entrySet()) {
@@ -119,17 +119,15 @@ public class OsmoseInformation extends GenericInformation {
                             } else if ("lon".equals(field)) {
                                 lon = Double.parseDouble(entry.getValue().toString());
                             } else if (entry.getValue() instanceof JsonString) {
-                                node.put(field, ((JsonString) entry.getValue()).getString());
+                                tagMap.put(field, ((JsonString) entry.getValue()).getString());
                             } else if (!JsonValue.NULL.equals(entry.getValue())) {
-                                node.put(field, entry.getValue().toString());
+                                tagMap.put(field, entry.getValue().toString());
                             }
                         }
-                        String id = node.get("id");
-                        node.remove("id");
-                        node.put(ERROR_ID, id);
-                        node.setCoor(new LatLon(lat, lon));
-
-                        if (!node.isOutSideWorld()) {
+                        tagMap.put(ERROR_ID, tagMap.remove("id"));
+                        final OsmoseNode node = new OsmoseNode(UUID.fromString(tagMap.get(ERROR_ID)), lat, lon);
+                        node.setKeys(tagMap);
+                        if (!ds.containsNode(node)) {
                             ds.addPrimitive(node);
                         }
                     }
@@ -138,7 +136,6 @@ public class OsmoseInformation extends GenericInformation {
         } catch (IOException e) {
             Logging.error(e);
         }
-        cache.close();
         return ds;
     }
 
@@ -164,10 +161,10 @@ public class OsmoseInformation extends GenericInformation {
     }
 
     @Override
-    public DataSet getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
+    public OpenQADataSet<UUID, OsmoseNode> getErrors(List<Bounds> bounds, ProgressMonitor monitor) {
         ProgressMonitor subTask = monitor.createSubTaskMonitor(0, false);
         subTask.beginTask(tr("Getting {0} errors", NAME));
-        DataSet returnDataSet = null;
+        OpenQADataSet<UUID, OsmoseNode> returnDataSet = null;
         String windowTitle = tr("Updating {0} information", NAME);
         if (bounds.size() > 10) {
             subTask.subTask(windowTitle);
@@ -179,12 +176,12 @@ public class OsmoseInformation extends GenericInformation {
         for (Bounds bound : bounds) {
             if (subTask.isCanceled())
                 break;
-            DataSet ds = getGeoJsonErrors(bound);
+            OpenQADataSet<UUID, OsmoseNode> ds = getGeoJsonErrors(bound);
             if (ds != null) {
                 if (returnDataSet == null) {
                     returnDataSet = ds;
                 } else {
-                    returnDataSet.mergeFrom(ds, subTask.createSubTaskMonitor(1, false));
+                    returnDataSet.mergeFrom(ds);
                 }
             }
         }
@@ -209,7 +206,7 @@ public class OsmoseInformation extends GenericInformation {
      * @return NavigableMap&lt;String errorNumber, String errorName&gt;
      */
     public static NavigableMap<String, String> getErrors(String cacheDir) {
-        if (ERROR_MAP == null || ERROR_MAP.isEmpty()) {
+        if (ERROR_MAP.isEmpty()) {
             TreeMap<String, String> tErrors = new TreeMap<>();
 
             // TODO move to 0.3 api
@@ -242,7 +239,8 @@ public class OsmoseInformation extends GenericInformation {
                 Logging.debug(e.getMessage());
                 tErrors.put("xxxx", "All");
             }
-            ERROR_MAP = tErrors;
+            ERROR_MAP.clear();
+            ERROR_MAP.putAll(tErrors);
         }
         return ERROR_MAP;
     }
@@ -308,9 +306,9 @@ public class OsmoseInformation extends GenericInformation {
      * @author Taylor Smock
      */
     private static class AdditionalInformation implements Runnable {
-        final Node node;
+        final OsmoseNode node;
 
-        AdditionalInformation(Node node) {
+        AdditionalInformation(OsmoseNode node) {
             this.node = node;
         }
 
@@ -349,7 +347,7 @@ public class OsmoseInformation extends GenericInformation {
         }
     }
 
-    private static void getAdditionalInformation(Node node) {
+    private static void getAdditionalInformation(OsmoseNode node) {
         if (!node.hasKey(ADDITIONAL_INFORMATION) || !node.get(ADDITIONAL_INFORMATION).equals("true")) {
             AdditionalInformation info = new AdditionalInformation(node);
             info.run();
@@ -357,13 +355,13 @@ public class OsmoseInformation extends GenericInformation {
     }
 
     @Override
-    public boolean cacheAdditionalInformation(Node node) {
+    public boolean cacheAdditionalInformation(OsmoseNode node) {
         getAdditionalInformation(node);
         return true;
     }
 
     @Override
-    public String getNodeToolTip(Node node) {
+    public String getNodeToolTip(OsmoseNode node) {
         StringBuilder sb = new StringBuilder("<html>");
         sb.append(tr(NAME)).append(": ").append(getTranslatedText(node.get("title"))).append(" - <a href=")
                 .append(getBaseErrorUrl()).append(node.get(ERROR_ID)).append('>').append(node.get(ERROR_ID))
@@ -499,7 +497,7 @@ public class OsmoseInformation extends GenericInformation {
     }
 
     @Override
-    public List<JButton> getActions(Node node) {
+    public List<JButton> getActions(OsmoseNode node) {
         final String apiUrl = getBaseApi() + "issue/" + node.get(ERROR_ID) + "/";
 
         JButton fixed = new JButton();
@@ -557,6 +555,11 @@ public class OsmoseInformation extends GenericInformation {
     }
 
     @Override
+    public OsmoseDataSet createNewDataSet() {
+        return new OsmoseDataSet();
+    }
+
+    @Override
     public ImageIcon getIcon(String errorValue, ImageSizes size) {
         if (ImageSizes.LARGEICON == size) {
             return LARGE_ICON_CACHE.get(errorValue, () -> this.realGetIcon(errorValue, size));
@@ -592,7 +595,7 @@ public class OsmoseInformation extends GenericInformation {
     }
 
     @Override
-    public String getError(Node node) {
+    public String getError(OsmoseNode node) {
         return node.get("item");
     }
 
