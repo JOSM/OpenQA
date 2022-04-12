@@ -74,6 +74,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
+import org.openstreetmap.josm.tools.JosmRuntimeException;
 import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.Utils;
 import org.openstreetmap.josm.tools.bugreport.BugReport;
@@ -89,8 +90,7 @@ public class ErrorLayer extends AbstractModifiableLayer
      * mark Group non capturing: at least one horizontal or vertical whitespace
      * Group 2 (capturing): a letter (any script), or any punctuation
      */
-    private static final Pattern SENTENCE_MARKS_WESTERN = Pattern
-            .compile("([\\.\\?\\!])(?:[\\h\\v]+)([\\p{L}\\p{Punct}])");
+    private static final Pattern SENTENCE_MARKS_WESTERN = Pattern.compile("([.?!])(?:[\\h\\v]+)([\\p{L}\\p{Punct}])");
 
     /**
      * Pattern to detect end of sentences followed by another one, or a link, in
@@ -99,6 +99,8 @@ public class ErrorLayer extends AbstractModifiableLayer
      */
     private static final Pattern SENTENCE_MARKS_EASTERN = Pattern.compile("(\\u3002)([\\p{L}\\p{Punct}])");
 
+    private static final String STRING_ACTION_TAKEN = "actionTaken";
+
     final HashMap<GenericInformation, DataSet> dataSets = new HashMap<>();
     final HashMap<GenericInformation, Boolean> enabledSources = new HashMap<>();
 
@@ -106,8 +108,6 @@ public class ErrorLayer extends AbstractModifiableLayer
     private JScrollPane displayedPanel;
     private JWindow displayedWindow;
     private PaintWindow window;
-
-    ArrayList<Node> previousNodes;
 
     final String cacheDir;
 
@@ -185,21 +185,24 @@ public class ErrorLayer extends AbstractModifiableLayer
                 if (ds == null || ds.allPrimitives().isEmpty()) {
                     ds = type.getErrors(layer.getDataSet(), progressMonitor);
                 } else {
-                    Map<String, OsmPrimitive> oldPrimitives = ds.allPrimitives().stream()
-                            .filter(prim -> prim.hasKey(GenericInformation.ERROR_ID))
-                            .collect(Collectors.toMap(prim -> prim.get(GenericInformation.ERROR_ID), prim -> prim));
-                    DataSet mergeFrom = type.getErrors(layer.getDataSet(), progressMonitor);
-                    for (final OsmPrimitive osm : mergeFrom.allPrimitives()) {
-                        OsmPrimitive osm2 = Optional.ofNullable(ds.getPrimitiveById(osm.getPrimitiveId()))
-                                .orElseGet(() -> oldPrimitives.get(osm.get(GenericInformation.ERROR_ID)));
-                        mergeFrom.removePrimitive(osm.getPrimitiveId());
-                        ds.removePrimitive(osm2);
+                    // Synchronize on the ds, so we avoid accidentally adding duplicates.
+                    // See comment 2 on JOSM #22010.
+                    synchronized (ds) {
+                        Map<String, OsmPrimitive> oldPrimitives = ds.allPrimitives().stream()
+                                .filter(prim -> prim.hasKey(GenericInformation.ERROR_ID))
+                                .collect(Collectors.toMap(prim -> prim.get(GenericInformation.ERROR_ID), prim -> prim));
+                        DataSet mergeFrom = type.getErrors(layer.getDataSet(), progressMonitor);
+                        for (final OsmPrimitive osm : mergeFrom.allPrimitives()) {
+                            OsmPrimitive osm2 = Optional.ofNullable(ds.getPrimitiveById(osm.getPrimitiveId()))
+                                    .orElseGet(() -> oldPrimitives.get(osm.get(GenericInformation.ERROR_ID)));
+                            mergeFrom.removePrimitive(osm.getPrimitiveId());
+                            ds.removePrimitive(osm2);
 
-                        if (osm2 != null && osm2.isModified()) {
-                            Logging.info("Primitive found");
-                            ds.addPrimitive(osm2);
-                        } else {
-                            ds.addPrimitive(osm);
+                            if (osm2 != null && osm2.isModified()) {
+                                ds.addPrimitive(osm2);
+                            } else {
+                                ds.addPrimitive(osm);
+                            }
                         }
                     }
                 }
@@ -302,7 +305,7 @@ public class ErrorLayer extends AbstractModifiableLayer
         @Override
         public void run() {
             for (GenericInformation type : dataSets.keySet()) {
-                if (enabledSources.containsKey(type) && !enabledSources.get(type))
+                if (enabledSources.containsKey(type) && Boolean.TRUE.equals(!enabledSources.get(type)))
                     continue;
                 realrun(type);
             }
@@ -501,7 +504,6 @@ public class ErrorLayer extends AbstractModifiableLayer
                                     pane.setPreferredSize(new Dimension(w, h));
                                 }
                             }
-                            // htmlPanel.setPreferredSize(pane.getPreferredSize());
                             Dimension daction = htmlPanel.getPreferredSize();
                             d = pane.getPreferredSize();
                             d.setSize(Math.max(d.getWidth(), daction.getWidth()),
@@ -686,7 +688,9 @@ public class ErrorLayer extends AbstractModifiableLayer
         public void actionPerformed(ActionEvent e) {
             File directory = new File(cacheDir, GenericInformation.DATA_SUB_DIR);
             Utils.deleteDirectory(directory);
-            directory.mkdirs();
+            if (!directory.mkdirs()) {
+                throw new JosmRuntimeException(tr("Could not create directory {0}", directory));
+            }
             for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
                 DataSet ds = entry.getValue();
                 if (ds == null) {
@@ -694,7 +698,7 @@ public class ErrorLayer extends AbstractModifiableLayer
                 }
                 DataSet temporaryDataSet = new DataSet();
                 for (OsmPrimitive osmPrimitive : ds.allPrimitives()) {
-                    if (osmPrimitive.hasKey("actionTaken")) {
+                    if (osmPrimitive.hasKey(STRING_ACTION_TAKEN)) {
                         ds.removePrimitive(osmPrimitive);
                         temporaryDataSet.addPrimitive(osmPrimitive);
                     }
@@ -809,15 +813,15 @@ public class ErrorLayer extends AbstractModifiableLayer
     @Override
     public void highlightUpdated(HighlightUpdateEvent e) {
         for (OsmPrimitive osmPrimitive : e.getDataSet().allPrimitives()) {
-            if (osmPrimitive instanceof Node
-                    && (osmPrimitive.hasKey("actionTaken") || "false".equals(osmPrimitive.get("actionTaken")))) {
+            if (osmPrimitive instanceof Node && (osmPrimitive.hasKey(STRING_ACTION_TAKEN)
+                    || "false".equals(osmPrimitive.get(STRING_ACTION_TAKEN)))) {
                 Node node = (Node) osmPrimitive;
                 for (Entry<GenericInformation, DataSet> entry : dataSets.entrySet()) {
                     if (!entry.getValue().containsNode(node))
                         continue;
                     entry.getKey().getNodeToolTip(node);
-                    if (!osmPrimitive.hasKey("actionTaken")) {
-                        osmPrimitive.put("actionTaken", "true");
+                    if (!osmPrimitive.hasKey(STRING_ACTION_TAKEN)) {
+                        osmPrimitive.put(STRING_ACTION_TAKEN, "true");
                     }
                 }
             }
