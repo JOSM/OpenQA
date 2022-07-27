@@ -59,6 +59,7 @@ import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.data.projection.ProjectionRegistry;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
+import org.openstreetmap.josm.gui.Notification;
 import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.AbstractModifiableLayer;
@@ -335,7 +336,17 @@ public class ErrorLayer extends AbstractModifiableLayer
             for (N node : ds.getNodes()) {
                 Point p = mv.getPoint(node);
                 String error = type.genericInformation().getError(node);
-                ImageIcon icon = type.genericInformation().getIcon(error, size);
+                final ImageIcon icon;
+                // See #22249
+                if (error == null) {
+                    icon = ImageProvider.createBlankIcon(ImageSizes.MAP);
+                    new Notification(tr("Image Error: {0}: {1}", type.genericInformation().getName(),
+                            node.getKeys().entrySet().stream()
+                                    .map(entry -> String.join("=", entry.getKey(), entry.getValue()))
+                                    .collect(Collectors.joining(", ")))).show();
+                } else {
+                    icon = type.genericInformation().getIcon(error, size);
+                }
                 int width = icon.getIconWidth();
                 int height = icon.getIconHeight();
                 g.drawImage(icon.getImage(), p.x - (width / 2), p.y - (height / 2), MainApplication.getMap().mapView);
