@@ -67,8 +67,10 @@ import com.kaart.openqa.OpenQADataSet;
 import com.kaart.openqa.profiles.GenericInformation;
 
 /**
- * @author Taylor Smock
+ * The information class for
+ * <a href="https://osmose.openstreetmap.fr">OSMOSE</a>.
  *
+ * @author Taylor Smock
  */
 public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, OpenQADataSet<UUID, OsmoseNode>> {
     public static final String NAME = "Osmose";
@@ -209,7 +211,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
         if (ERROR_MAP.isEmpty()) {
             TreeMap<String, String> tErrors = new TreeMap<>();
 
-            // TODO move to 0.3 api
             try (CachedFile cache = new CachedFile(MessageFormat.format(BASE_API + "items", getLocale()))) {
                 cache.setDestDir(cacheDir);
                 JsonParser parser = Json.createParser(cache.getInputStream());
@@ -236,7 +237,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                 }
                 parser.close();
             } catch (IOException e) {
-                Logging.debug(e.getMessage());
+                Logging.debug(e);
                 tErrors.put("xxxx", "All");
             }
             ERROR_MAP.clear();
@@ -257,7 +258,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
         NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> categories = new TreeMap<>();
         NavigableMap<String, String> errors = getErrors(cacheDir);
         JsonParser parser = null;
-        // TODO move to 0.3 when equivalent is available
         try (CachedFile cache = new CachedFile(MessageFormat.format(BASE_API + "items", getLocale()))) {
             cache.setDestDir(cacheDir);
             parser = Json.createParser(cache.getInputStream());
@@ -289,7 +289,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                 }
             }
         } catch (IOException e) {
-            Logging.debug(e.getMessage());
+            Logging.debug(e);
             NavigableMap<String, NavigableMap<String, String>> tMap = new TreeMap<>();
             tMap.put(tr("No categories found"), errors);
             categories.put("-1", tMap);
@@ -336,7 +336,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                 }
                 node.put(ADDITIONAL_INFORMATION, "true");
             } catch (IOException e) {
-                Logging.debug(e.getMessage());
+                Logging.debug(e);
             } finally {
                 if (parser != null)
                     parser.close();
@@ -348,7 +348,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
     }
 
     private static void getAdditionalInformation(OsmoseNode node) {
-        if (!node.hasKey(ADDITIONAL_INFORMATION) || !node.get(ADDITIONAL_INFORMATION).equals("true")) {
+        if (!node.hasKey(ADDITIONAL_INFORMATION) || !"true".equals(node.get(ADDITIONAL_INFORMATION))) {
             AdditionalInformation info = new AdditionalInformation(node);
             info.run();
         }
@@ -401,7 +401,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
         }
 
         String suggestions = node.get("new_elems");
-        if (suggestions != null && !suggestions.trim().isEmpty() && !suggestions.equals("[]")) {
+        if (suggestions != null && !suggestions.trim().isEmpty() && !"[]".equals(suggestions)) {
             String htmlText = "Possible additions: ";
             htmlText = htmlText.concat(suggestions); // TODO check if we can parse this with JSON
             sb.append(htmlText);
@@ -434,8 +434,8 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                 }
             }
             if (users.isEmpty()) {
-                primitives.stream().map(OsmPrimitive::getUser).distinct().filter(User::isOsmUser).map(User::getName)
-                        .forEach(users::add);
+                users.addAll(primitives.stream().map(OsmPrimitive::getUser).distinct().filter(User::isOsmUser)
+                        .map(User::getName).collect(Collectors.toList()));
             }
             sb.append("<br/>").append(tr("Last modified by ")).append(String.join(", ", users));
         }
@@ -469,31 +469,28 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
      * @return The osm ids
      */
     private static Collection<PrimitiveId> parseOsmIds(final String json) {
-        final List<PrimitiveId> primitiveIds;
         try (JsonReader reader = Json.createReader(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)))) {
             final JsonObject object = reader.readObject();
-            primitiveIds = new ArrayList<>(object.values().stream().filter(JsonArray.class::isInstance)
-                    .map(JsonArray.class::cast).mapToInt(JsonArray::size).sum());
             if (object.containsKey("relations")) {
                 final JsonArray relations = object.getJsonArray("relations");
-                relations.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
+                return relations.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
                         .map(JsonNumber::longValue).map(i -> new SimplePrimitiveId(i, OsmPrimitiveType.RELATION))
-                        .forEach(primitiveIds::add);
+                        .collect(Collectors.toList());
             }
             if (object.containsKey("ways")) {
                 final JsonArray ways = object.getJsonArray("ways");
-                ways.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
+                return ways.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
                         .map(JsonNumber::longValue).map(i -> new SimplePrimitiveId(i, OsmPrimitiveType.WAY))
-                        .forEach(primitiveIds::add);
+                        .collect(Collectors.toList());
             }
             if (object.containsKey("nodes")) {
                 final JsonArray nodes = object.getJsonArray("nodes");
-                nodes.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
+                return nodes.stream().filter(JsonNumber.class::isInstance).map(JsonNumber.class::cast)
                         .map(JsonNumber::longValue).map(i -> new SimplePrimitiveId(i, OsmPrimitiveType.NODE))
-                        .forEach(primitiveIds::add);
+                        .collect(Collectors.toList());
             }
         }
-        return primitiveIds;
+        return Collections.emptyList();
     }
 
     @Override
@@ -584,7 +581,8 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                 image.close();
             }
             return icon;
-        } catch (NullPointerException | IOException e) {
+        } catch (IOException e) {
+            Logging.error(e);
             return super.getIcon("-1", size);
         }
     }

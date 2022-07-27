@@ -3,7 +3,6 @@ package com.kaart.openqa;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -110,7 +109,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
         }
 
         @Override
-        protected void realRun() throws IOException {
+        protected void realRun() {
             if (isCanceled)
                 return;
             List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);

@@ -19,14 +19,14 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.openstreetmap.josm.data.coor.ILatLon;
-import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.tools.Logging;
 
 import com.kaart.openqa.profiles.OpenQANode;
 
 /**
- * Reader that reads GeoJSON files. See https://tools.ietf.org/html/rfc7946 for
- * more information.
+ * Reader that reads GeoJSON files. See
+ * <a href="https://tools.ietf.org/html/rfc7946">RFC 7946</a> for more
+ * information.
  */
 public class GeoJsonReader<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
 
@@ -195,13 +195,9 @@ public class GeoJsonReader<I, N extends OpenQANode<I>, D extends OpenQADataSet<I
      *
      * @param source the source input stream. Must not be null.
      * @return the dataset with the parsed data
-     * @throws IllegalDataException     if an error was found while parsing the data
-     *                                  from the source
-     * @throws IllegalArgumentException if source is null
      */
     public static <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> D parseDataSet(InputStream source,
-            final Supplier<D> dataSetSupplier, BiFunction<Map<String, String>, ILatLon, N> nodeCreator)
-            throws IllegalDataException {
+            final Supplier<D> dataSetSupplier, BiFunction<Map<String, String>, ILatLon, N> nodeCreator) {
         final GeoJsonReader<I, N, D> gjr = new GeoJsonReader<>(dataSetSupplier, nodeCreator);
         return gjr.doParseDataSet(source);
     }

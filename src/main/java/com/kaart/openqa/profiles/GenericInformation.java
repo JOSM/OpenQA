@@ -58,7 +58,10 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
     /** The layer name */
     public abstract String getName();
 
-    /** The API URL, usually something like https://www.example.org/api/0.2 */
+    /**
+     * The API URL, usually something like
+     * <a href="https://www.example.org/api/0.2">https://www.example.org/api/0.2</a>
+     */
     public abstract String getBaseApi();
 
     /** The base URL for images */

@@ -1,6 +1,7 @@
 // License: GPL. For details, see LICENSE file.
 package com.kaart.openqa;
 
+import java.util.HashSet;
 import java.util.List;
 
 import org.openstreetmap.josm.data.Bounds;
@@ -39,7 +40,7 @@ public class OpenQADataSetListener implements DataSetListener {
     public void dataChanged(DataChangedEvent e) {
         List<Bounds> tBounds = e.getDataset().getDataSourceBounds();
         List<ErrorLayer> layers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
-        if (!layers.isEmpty() && (bounds == null || !bounds.containsAll(tBounds))) {
+        if (!layers.isEmpty() && (bounds == null || !new HashSet<>(bounds).containsAll(tBounds))) {
             bounds = tBounds;
             OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
         }

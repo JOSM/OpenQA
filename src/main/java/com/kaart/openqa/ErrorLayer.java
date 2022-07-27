@@ -148,8 +148,6 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     final String cacheDir;
 
-    EastNorth lastClick;
-
     private boolean updateCanceled = false;
 
     private final List<DataSet> listeningDataSets = new ArrayList<>();
@@ -261,25 +259,6 @@ public class ErrorLayer extends AbstractModifiableLayer
         hideNodeWindow();
         MainApplication.getLayerManager().removeLayerChangeListener(this);
         super.destroy();
-    }
-
-    /**
-     * Add notes from a {@code DataSet}
-     *
-     * @param type       {@code GenericInformation} subclass to add notes for
-     * @param newDataSet {@code DataSet} with notes
-     * @return true if added
-     */
-    public <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> boolean addNotes(
-            GenericInformation<I, N, D> type, D newDataSet) {
-        for (DataSetPairs<?, ?, ?> pair : dataSets) {
-            if (pair.genericInformation().getClass().equals(type.getClass())
-                    && pair.dataset().getClass().equals(newDataSet.getClass())) {
-                pair.dataset().mergeFrom(pair.dataset().getClass().cast(newDataSet));
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
@@ -446,7 +425,6 @@ public class ErrorLayer extends AbstractModifiableLayer
             displayedWindow.setVisible(mv.contains(p));
             if (!mv.contains(p))
                 hideNodeWindow();
-            lastClick = currentClick;
         }
 
         private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void paintSelectedNode(

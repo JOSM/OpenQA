@@ -11,7 +11,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 
 /**
  * Downloads a file and caches it on disk in order to reduce network load.
- *
+ * <p>
  * Supports URLs, local files, and a custom scheme (<code>resource:</code>) to
  * get resources from the current *.jar file. (Local caching is only done for
  * URLs.)

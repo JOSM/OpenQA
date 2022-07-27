@@ -20,7 +20,6 @@ import org.apache.commons.jcs3.engine.behavior.ICompositeCacheAttributes;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.cache.JCSCacheManager;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
-import org.openstreetmap.josm.io.IllegalDataException;
 import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
@@ -182,7 +181,7 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
         try {
             return GeoJsonReader.parseDataSet(cache.getInputStream(), this::createNewDataSet,
                     (tags, coor) -> new KeepRightNode(Long.parseLong(tags.get(ERROR_ID)), coor));
-        } catch (IllegalDataException | IOException e) {
+        } catch (IOException e) {
             Logging.error(e);
         }
         return null;
@@ -207,7 +206,7 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
             KeepRightDataSet ds = getGeoJsonErrors(bound);
             if (returnDataSet == null) {
                 returnDataSet = ds;
-            } else {
+            } else if (ds != null) {
                 returnDataSet.mergeFrom(ds);
             }
         }
