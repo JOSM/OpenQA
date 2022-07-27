@@ -6,17 +6,55 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 plugins {
-  id "com.diffplug.spotless" version "6.3.0"
+  id "com.diffplug.spotless" version "6.8.0"
   id "com.github.ben-manes.versions" version "0.42.0"
-  id "com.github.spotbugs" version "5.0.6"
+  id "com.github.spotbugs" version "5.0.9"
   // id "de.aaschmid.cpd" version "3.3"
   id "eclipse"
   id "jacoco"
   id "java"
   id "maven-publish"
   id "net.ltgt.errorprone" version "2.0.2"
-  id "org.openstreetmap.josm" version "0.8.0"
+  id "org.openstreetmap.josm" version "0.8.2"
   id "pmd"
+}
+
+archivesBaseName = "openqa"
+def gitlabGroup = "gokaart"
+def gitlabRepositoryName = "JOSM_OpenQA"
+
+
+def versions = [
+  awaitility: "4.2.0",
+  // Errorprone 2.11 requires Java 11+
+  errorprone: (JavaVersion.toVersion(getJavaVersion()) >= JavaVersion.VERSION_11) ? "2.14.0" : "2.10.0",
+  jacoco: "0.8.7",
+  jmockit: "1.49",
+  junit: "5.9.0",
+  pmd: "6.20.0",
+  spotbugs: "4.7.1",
+  wiremock: "2.33.2",
+  findsecbugs: "1.12.0",
+]
+
+repositories {
+  mavenCentral()
+}
+dependencies {
+  if (!JavaVersion.toVersion(getJavaVersion()).isJava9Compatible()) {
+    errorproneJavac("com.google.errorprone:javac:9+181-r4173-1")
+  }
+  spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${versions.findsecbugs}"
+  errorprone("com.google.errorprone:error_prone_core:${versions.errorprone}")
+
+  testImplementation("org.junit.jupiter:junit-jupiter-api:${versions.junit}")
+  testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${versions.junit}")
+  testImplementation("org.junit.vintage:junit-vintage-engine:${versions.junit}")
+  testImplementation("org.jmockit:jmockit:${versions.jmockit}")
+  testImplementation("com.github.spotbugs:spotbugs-annotations:${versions.spotbugs}")
+  testImplementation("org.openstreetmap.josm:josm-unittest:"){changing=true}
+  testImplementation("com.github.tomakehurst:wiremock-jre8:${versions.wiremock}")
+  testImplementation("org.awaitility:awaitility:${versions.awaitility}")
 }
 
 int getJavaVersion() {
@@ -44,55 +82,23 @@ java {
 // Set up Errorprone
 tasks.withType(JavaCompile).configureEach {
   options.errorprone {
-    check("DefaultCharset", CheckSeverity.ERROR)
-    check("StringEquality", CheckSeverity.ERROR)
-    check("ConstantField",  CheckSeverity.WARN)
-    check("FieldCanBeFinal", CheckSeverity.WARN)
-    check("LambdaFunctionalInterface", CheckSeverity.WARN)
-    check("MethodCanBeStatic", CheckSeverity.WARN)
-    check("MultiVariableDeclaration", CheckSeverity.WARN)
-    check("PrivateConstructorForUtilityClass", CheckSeverity.WARN)
-    check("UngroupedOverloads", CheckSeverity.WARN)
-    check("WildcardImport", CheckSeverity.WARN)
+    error(
+      "ClassCanBeStatic",
+      "DefaultCharset",
+      "ReferenceEquality",
+      "WildcardImport"
+    )
+    warn(
+      "ConstantField",
+      "FieldCanBeFinal",
+      "LambdaFunctionalInterface",
+      "MethodCanBeStatic",
+      "MultiVariableDeclaration",
+      "PrivateConstructorForUtilityClass",
+      "RemoveUnusedImports",
+      "UngroupedOverloads"
+    )
   }
-}
-
-archivesBaseName = "openqa"
-def gitlabGroup = "gokaart"
-def gitlabRepositoryName = "JOSM_OpenQA"
-
-
-def versions = [
-  awaitility: "4.2.0",
-  // Errorprone 2.11 requires Java 11+
-  errorprone: (JavaVersion.toVersion(getJavaVersion()) >= JavaVersion.VERSION_11) ? "2.11.0" : "2.10.0",
-  jacoco: "0.8.7",
-  jmockit: "1.49",
-  junit: "5.8.2",
-  pmd: "6.20.0",
-  spotbugs: "4.6.0",
-  wiremock: "2.32.0",
-  findsecbugs: "1.11.0",
-]
-
-repositories {
-  mavenCentral()
-}
-dependencies {
-  if (!JavaVersion.toVersion(getJavaVersion()).isJava9Compatible()) {
-    errorproneJavac("com.google.errorprone:javac:9+181-r4173-1")
-  }
-  spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${versions.findsecbugs}"
-  errorprone("com.google.errorprone:error_prone_core:${versions.errorprone}")
-
-  testImplementation("org.junit.jupiter:junit-jupiter-api:${versions.junit}")
-  testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${versions.junit}")
-  testImplementation("org.junit.vintage:junit-vintage-engine:${versions.junit}")
-  testImplementation("org.jmockit:jmockit:${versions.jmockit}")
-  testImplementation("com.github.spotbugs:spotbugs-annotations:${versions.spotbugs}")
-  testImplementation("org.openstreetmap.josm:josm-unittest:"){changing=true}
-  testImplementation("com.github.tomakehurst:wiremock-jre8:${versions.wiremock}")
-  testImplementation("org.awaitility:awaitility:${versions.awaitility}")
 }
 
 test {
