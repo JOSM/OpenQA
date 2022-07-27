@@ -220,6 +220,9 @@ public class ErrorLayer extends AbstractModifiableLayer
                 progressMonitor.cancel();
                 break;
             }
+            if (!Boolean.TRUE.equals(this.enabledSources.getOrDefault(entry.genericInformation, false))) {
+                continue;
+            }
             for (OsmDataLayer layer : dataLayers) {
                 if (updateCanceled)
                     break;
