@@ -143,7 +143,6 @@ spotless {
 
 josm {
   manifest {
-    oldVersionDownloadLink 14824, "1557250801", new URL("https://gitlab.com/gokaart/JOSM_OpenQA/uploads/3d6885ade18852823ce2681f950ea0e8/openqa.jar")
   }
   i18n {
     pathTransformer = getPathTransformer(project.projectDir, "gitlab.com/${gitlabGroup}/${gitlabRepositoryName}/blob")
