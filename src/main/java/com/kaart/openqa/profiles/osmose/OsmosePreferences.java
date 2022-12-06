@@ -29,8 +29,9 @@ import com.kaart.openqa.profiles.GenericInformation;
 import com.kaart.openqa.profiles.ProfilePreferences;
 
 /**
- * @author Taylor Smock
+ * The preference class for Osmose
  *
+ * @author Taylor Smock
  */
 public class OsmosePreferences extends ProfilePreferences {
     JPanel testPanel;
@@ -38,6 +39,11 @@ public class OsmosePreferences extends ProfilePreferences {
     final String cacheDir;
     static final String PREF_TESTS = "openqa.osmose-tests";
 
+    /**
+     * Create a new Osmose preference object
+     *
+     * @param directory The cache directory
+     */
     public OsmosePreferences(String directory) {
         super(OpenQA.OPENQA_IMAGE, tr("Osmose"), tr("osmose Settings"));
         cacheDir = directory;

@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -32,8 +33,9 @@ import com.kaart.openqa.OpenQA;
 import com.kaart.openqa.profiles.GenericInformation;
 
 /**
- * @author Taylor Smock
+ * The information for KeepRight
  *
+ * @author Taylor Smock
  */
 public class KeepRightInformation extends GenericInformation<Long, KeepRightNode, KeepRightDataSet> {
     public static final String LAYER_NAME = "Keep Right Errors";
@@ -238,7 +240,8 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
             ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath(), size);
             image.close();
             return icon;
-        } catch (NullPointerException | IOException e) {
+        } catch (IOException e) {
+            Logging.error(e);
             return super.getIcon("-1", size);
         }
     }
@@ -246,8 +249,8 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
     @Override
     public String buildDownloadErrorList() {
         StringBuilder list = new StringBuilder();
-        List<String> enabled = Config.getPref()
-                .getList(OpenQA.PREF_PREFIX.concat(getName().toLowerCase()).concat("-tests"), buildDefaultPref());
+        List<String> enabled = Config.getPref().getList(
+                OpenQA.PREF_PREFIX.concat(getName().toLowerCase(Locale.US)).concat("-tests"), buildDefaultPref());
         for (int i = 0; i < enabled.size(); i++) {
             list.append(enabled.get(i));
             if (i < enabled.size() - 1) {
@@ -307,7 +310,7 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
                 falsePositive.setEnabled(true);
                 node.put("error_type", "zapangel");
                 redrawErrorLayers(tr(LAYER_NAME));
-                addChangeSetTag(getName().toLowerCase(), node.get(ERROR_ID));
+                addChangeSetTag(getName().toLowerCase(Locale.US), node.get(ERROR_ID));
             }
         });
 

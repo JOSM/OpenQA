@@ -87,10 +87,13 @@ import com.kaart.openqa.profiles.OpenQANode;
 import com.kaart.openqa.profiles.keepright.KeepRightInformation;
 import com.kaart.openqa.profiles.osmose.OsmoseInformation;
 
+/**
+ * The layer to display issues
+ */
 public class ErrorLayer extends AbstractModifiableLayer
         implements MouseListener, MouseMotionListener, LayerChangeListener, DataSourceListener {
     // This could be a record
-    private static class DataSetPairs<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
+    private static final class DataSetPairs<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
         private final D dataset;
         private final GenericInformation<I, N, D> genericInformation;
 
@@ -106,14 +109,30 @@ public class ErrorLayer extends AbstractModifiableLayer
             this.dataset = dataset == null ? genericInformation.createNewDataSet() : dataset;
         }
 
+        /**
+         * Get the dataset for this pair
+         *
+         * @return the dataset
+         */
         public D dataset() {
             return this.dataset;
         }
 
+        /**
+         * Get the generic information for this pair
+         *
+         * @return The info
+         */
         public GenericInformation<I, N, D> genericInformation() {
             return this.genericInformation;
         }
 
+        /**
+         * Update the dataset of this pair
+         *
+         * @param progressMonitor The progress monitor to use
+         * @param data            The data to get errors from
+         */
         public void update(ProgressMonitor progressMonitor, Data data) {
             progressMonitor.indeterminateSubTask(tr("Updating {0}", genericInformation.getLayerName()));
             OpenQADataSet<I, N> mergeFrom = genericInformation.getErrors(data, progressMonitor);
@@ -127,14 +146,14 @@ public class ErrorLayer extends AbstractModifiableLayer
      * mark Group non capturing: at least one horizontal or vertical whitespace
      * Group 2 (capturing): a letter (any script), or any punctuation
      */
-    private static final Pattern SENTENCE_MARKS_WESTERN = Pattern.compile("([.?!])(?:[\\h\\v]+)([\\p{L}\\p{Punct}])");
+    private static final Pattern SENTENCE_MARKS_WESTERN = Pattern.compile("([.?!])(?:[\\h\\v]+)([\\p{L}\\p{IsPunct}])");
 
     /**
      * Pattern to detect end of sentences followed by another one, or a link, in
      * eastern script. Group 1 (capturing): ideographic full stop Group 2
      * (capturing): a letter (any script), or any punctuation
      */
-    private static final Pattern SENTENCE_MARKS_EASTERN = Pattern.compile("(\\u3002)([\\p{L}\\p{Punct}])");
+    private static final Pattern SENTENCE_MARKS_EASTERN = Pattern.compile("(\\u3002)([\\p{L}\\p{IsPunct}])");
 
     private static final String STRING_ACTION_TAKEN = "actionTaken";
 
@@ -148,7 +167,7 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     final String cacheDir;
 
-    private boolean updateCanceled = false;
+    private boolean updateCanceled;
 
     private final List<DataSet> listeningDataSets = new ArrayList<>();
 
@@ -199,6 +218,9 @@ public class ErrorLayer extends AbstractModifiableLayer
         addListeners();
     }
 
+    /**
+     * Cancel the update
+     */
     public void cancel() {
         updateCanceled = true;
     }
@@ -253,7 +275,7 @@ public class ErrorLayer extends AbstractModifiableLayer
                     continue;
                 ds.removeHighlightUpdateListener(this);
             } catch (IllegalArgumentException e) {
-                Logging.debug(e.getMessage());
+                Logging.error(e);
             }
         }
         hideNodeWindow();
@@ -381,6 +403,9 @@ public class ErrorLayer extends AbstractModifiableLayer
                     averageEast += ten.east();
                     averageNorth += ten.north();
                 }
+            }
+            if (number == 0) {
+                return;
             }
             EastNorth currentClick = new EastNorth(averageEast / number, averageNorth / number);
             Point p = mv.getPoint(currentClick);
@@ -633,6 +658,7 @@ public class ErrorLayer extends AbstractModifiableLayer
             }
         }
 
+        @SuppressWarnings("unchecked")
         private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void selectNode(
                 Map<GenericInformation<?, ?, ?>, List<OpenQANode<?>>> closestNode, DataSetPairs<I, N, D> entry) {
             GenericInformation<I, N, D> type = entry.genericInformation();
@@ -748,6 +774,7 @@ public class ErrorLayer extends AbstractModifiableLayer
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void mergeFrom(Layer from) {
         if (from instanceof ErrorLayer) {
             ErrorLayer efrom = (ErrorLayer) from;
@@ -755,7 +782,7 @@ public class ErrorLayer extends AbstractModifiableLayer
                 boolean merged = false;
                 for (DataSetPairs<?, ?, ?> entry : dataSets) {
                     if (entry.dataset().getClass().isInstance(eEntry.dataset())) {
-                        entry.dataset().mergeFrom(entry.dataset.getClass().cast(eEntry.dataset()));
+                        entry.dataset().mergeFrom(entry.dataset().getClass().cast(eEntry.dataset()));
                         merged = true;
                         break;
                     }
@@ -826,7 +853,7 @@ public class ErrorLayer extends AbstractModifiableLayer
         }
     }
 
-    private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void highlightUpdated(BBox location,
+    private static <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void highlightUpdated(BBox location,
             DataSetPairs<I, N, D> entry) {
         // FIXME
         Collection<N> nodes = entry.dataset().searchNodes(location);

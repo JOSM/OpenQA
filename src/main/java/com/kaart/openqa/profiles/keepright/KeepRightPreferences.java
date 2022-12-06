@@ -22,8 +22,9 @@ import com.kaart.openqa.OpenQA;
 import com.kaart.openqa.profiles.ProfilePreferences;
 
 /**
- * @author Taylor Smock
+ * The preferences for keep right
  *
+ * @author Taylor Smock
  */
 public class KeepRightPreferences extends ProfilePreferences {
 
@@ -32,6 +33,11 @@ public class KeepRightPreferences extends ProfilePreferences {
     final String cacheDir;
     static final String PREF_TESTS = "openqa.keepright-tests";
 
+    /**
+     * Create a new KeepRightPreferences object
+     *
+     * @param directory The directory to cache data in
+     */
     public KeepRightPreferences(String directory) {
         super(OpenQA.OPENQA_IMAGE, tr("Keep Right"), tr("Keep Right Settings"));
         cacheDir = directory;

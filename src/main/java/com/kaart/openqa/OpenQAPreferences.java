@@ -25,6 +25,9 @@ import com.kaart.openqa.profiles.ProfilePreferences;
 import com.kaart.openqa.profiles.keepright.KeepRightPreferences;
 import com.kaart.openqa.profiles.osmose.OsmosePreferences;
 
+/**
+ * The OpenQA preferences class
+ */
 public class OpenQAPreferences extends DefaultTabPreferenceSetting implements SubPreferenceSetting {
 
     JPanel testPanel;
@@ -33,6 +36,11 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 
     final ArrayList<ProfilePreferences> tests = new ArrayList<>();
 
+    /**
+     * Create a new preferences
+     *
+     * @param directory The cache directory
+     */
     public OpenQAPreferences(String directory) {
         super(OpenQA.OPENQA_IMAGE, tr("OpenQA"), tr("OpenQA Settings"));
         cacheDir = directory;
@@ -63,7 +71,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
         preferenceTab.add(testPanel, GBC.eol().fill(GBC.BOTH));
     }
 
-    private void toggleBoxes(ProfilePreferences preference, boolean checked) {
+    private static void toggleBoxes(ProfilePreferences preference, boolean checked) {
         Map<String, List<JCheckBox>> boxes = preference.getCheckBoxes();
         for (List<JCheckBox> boxList : boxes.values()) {
             for (JCheckBox checkBox : boxList) {

@@ -6,15 +6,15 @@ import javax.swing.JButton;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.Data;
-import org.openstreetmap.josm.data.coor.LatLon;
-import org.openstreetmap.josm.data.osm.BBox;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
@@ -26,7 +26,6 @@ import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
-import org.openstreetmap.josm.tools.Logging;
 
 import com.kaart.openqa.CachedFile;
 import com.kaart.openqa.ErrorLayer;
@@ -34,8 +33,12 @@ import com.kaart.openqa.OpenQA;
 import com.kaart.openqa.OpenQADataSet;
 
 /**
- * @author Taylor Smock
+ * A class storing information for the different error sources
  *
+ * @param <I> The identifier class
+ * @param <N> The node class
+ * @param <D> The dataset class
+ * @author Taylor Smock
  */
 public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
     /** The subdirectory to store the data. This can be deleted at any time. */
@@ -55,24 +58,40 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
         this.cacheDir = cacheDir;
     }
 
-    /** The layer name */
+    /**
+     * The layer name
+     *
+     * @return the layer name
+     */
     public abstract String getName();
 
     /**
      * The API URL, usually something like
      * <a href="https://www.example.org/api/0.2">https://www.example.org/api/0.2</a>
+     *
+     * @return the base api URL
      */
     public abstract String getBaseApi();
 
-    /** The base URL for images */
+    /**
+     * The base URL for images
+     *
+     * @return the base URL
+     */
     public abstract String getBaseImg();
 
-    /** The base URL for error data or error manipulation */
+    /**
+     * The base URL for error data or error manipulation
+     *
+     * @return the base url
+     */
     public abstract String getBaseErrorUrl();
 
     /**
      * The possible errors for the class
      * {@code NavigableMap<Integer errorValue, String description>}
+     *
+     * @return the errors
      */
     public abstract NavigableMap<String, String> getErrors();
 
@@ -82,7 +101,7 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
      * @param url       The URL to cache
      * @param type      The accepted times for {@code CachedFile.setHttpAccept}
      * @param directory The directory to store the file in
-     * @return The @{code CachedFile} object with which to get a file
+     * @return The {@link CachedFile} object with which to get a file
      */
     public static CachedFile getFile(String url, String type, String directory) {
         CachedFile cache = new CachedFile(url);
@@ -136,27 +155,10 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
      *
      * @param dataSet with the data of interest
      * @param monitor the ProgressMonitor with which to see progress with
-     * @return The bounds that encompasses the @{code DataSet}
+     * @return The bounds that encompasses the {@link Data}
      */
     public static List<Bounds> getDefaultBounds(Data dataSet, ProgressMonitor monitor) {
         return dataSet.getDataSourceBounds();
-    }
-
-    /**
-     * Get the area of a bbox
-     *
-     * @param bbox to get an area of
-     * @return The area of a bbox in meters^2
-     */
-    private static double getArea(BBox bbox) {
-        if (bbox == null)
-            return Double.MAX_VALUE;
-        LatLon lr = bbox.getBottomRight();
-        LatLon ul = bbox.getTopLeft();
-        LatLon ll = new LatLon(lr.lat(), ul.lon());
-        double width = ll.greatCircleDistance(lr);
-        double height = ll.greatCircleDistance(ul);
-        return width * height;
     }
 
     /**
@@ -301,18 +303,24 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
                 cache.getFile();
                 cache.clear();
             } catch (IOException e) {
-                Logging.debug(e.getMessage());
+                throw new UncheckedIOException(e);
             }
         }
     }
 
+    /**
+     * Add a changeset tag to a layer
+     *
+     * @param source The source to add
+     * @param id     The id from the source
+     */
     public static void addChangeSetTag(String source, String id) {
         DataSet data = MainApplication.getLayerManager().getActiveDataSet();
         // TODO figure out if we want to keep this
         boolean addChangesetTags = Config.getPref().getBoolean(OpenQA.PREF_PREFIX.concat("changesetTags"), false);
         if (addChangesetTags && data != null && !data.allPrimitives().isEmpty()) {
             Map<String, String> tags = data.getChangeSetTags();
-            String key = OpenQA.NAME.toLowerCase();
+            String key = OpenQA.NAME.toLowerCase(Locale.US);
             // Clear the changeset tag if needed
             if (source == null || id == null) {
                 data.addChangeSetTag(key, "");

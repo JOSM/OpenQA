@@ -22,13 +22,19 @@ import com.kaart.openqa.profiles.keepright.KeepRightInformation;
 import com.kaart.openqa.profiles.osmose.OsmoseInformation;
 
 /**
- * @author Taylor Smock
+ * Listen to QA layer changes
  *
+ * @author Taylor Smock
  */
 public class OpenQALayerChangeListener implements LayerChangeListener {
     final HashMap<OsmDataLayer, OpenQADataSetListener> listeners = new HashMap<>();
     private final String cacheDir;
 
+    /**
+     * Create a new listener
+     *
+     * @param cacheDir The directory to use for caching
+     */
     public OpenQALayerChangeListener(String cacheDir) {
         super();
         this.cacheDir = cacheDir;

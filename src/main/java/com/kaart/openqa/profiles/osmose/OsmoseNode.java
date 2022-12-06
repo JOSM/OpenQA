@@ -8,6 +8,9 @@ import org.openstreetmap.josm.data.coor.ILatLon;
 
 import com.kaart.openqa.profiles.OpenQANode;
 
+/**
+ * The node class for Osmose
+ */
 public class OsmoseNode extends OpenQANode<UUID> {
 
     protected OsmoseNode(UUID identifier, ILatLon latLon) {

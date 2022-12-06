@@ -102,6 +102,8 @@ public class CachedFile extends org.openstreetmap.josm.io.CachedFile {
     }
 
     /**
+     * Check if this is set to be deleted on exit
+     *
      * @return true if the file will be deleted on program exit
      *         {@code File.deleteOnExit()} The file will only be deleted if it is a
      *         remote file.

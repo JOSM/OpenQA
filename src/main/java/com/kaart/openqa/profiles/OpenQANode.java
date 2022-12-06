@@ -29,7 +29,7 @@ public class OpenQANode<I> implements Comparable<OpenQANode<?>>, IQuadBucketType
     private final EnumSet<Flags> flags = EnumSet.noneOf(Flags.class);
     private final double lon;
     private final double lat;
-    private transient volatile BBox cachedBBox;
+    private volatile BBox cachedBBox;
     private final TagMap tagMap = new TagMap();
 
     protected OpenQANode(I identifier, ILatLon latLon) {

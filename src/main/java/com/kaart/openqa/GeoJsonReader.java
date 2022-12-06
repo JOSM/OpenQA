@@ -27,6 +27,10 @@ import com.kaart.openqa.profiles.OpenQANode;
  * Reader that reads GeoJSON files. See
  * <a href="https://tools.ietf.org/html/rfc7946">RFC 7946</a> for more
  * information.
+ *
+ * @param <I> The id for the primitives
+ * @param <N> The node type
+ * @param <D> The dataset holding the information
  */
 public class GeoJsonReader<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
 
@@ -151,11 +155,11 @@ public class GeoJsonReader<I, N extends OpenQANode<I>, D extends OpenQADataSet<I
         getDataSet().addPrimitive(node);
     }
 
-    private void parseUnknown(final JsonObject object) {
+    private static void parseUnknown(final JsonObject object) {
         Logging.warn(tr("Unknown json object found {0}", object));
     }
 
-    private Map<String, String> getTags(final JsonObject feature) {
+    private static Map<String, String> getTags(final JsonObject feature) {
         final Map<String, String> tags = new TreeMap<>();
 
         if (feature.containsKey(PROPERTIES) && !feature.isNull(PROPERTIES)) {
@@ -193,7 +197,12 @@ public class GeoJsonReader<I, N extends OpenQANode<I>, D extends OpenQADataSet<I
     /**
      * Parse the given input source and return the dataset.
      *
-     * @param source the source input stream. Must not be null.
+     * @param source          the source input stream. Must not be null.
+     * @param dataSetSupplier The supplier for the dataset
+     * @param nodeCreator     The function to create nodes
+     * @param <I>             The id for the primitives
+     * @param <N>             The node type
+     * @param <D>             The dataset type
      * @return the dataset with the parsed data
      */
     public static <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> D parseDataSet(InputStream source,

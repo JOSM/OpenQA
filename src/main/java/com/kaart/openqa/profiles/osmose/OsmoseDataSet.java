@@ -5,5 +5,8 @@ import java.util.UUID;
 
 import com.kaart.openqa.OpenQADataSet;
 
+/**
+ * The dataset class for Osmose
+ */
 public class OsmoseDataSet extends OpenQADataSet<UUID, OsmoseNode> {
 }

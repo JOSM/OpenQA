@@ -6,6 +6,7 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
+import java.util.Locale;
 
 import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.gui.MainApplication;
@@ -18,16 +19,24 @@ import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.Shortcut;
 
 /**
+ * The POJO entry point for the plugin
  *
  * @author Taylor Smock
  *
  */
 public class OpenQA extends Plugin {
+    /** The name of the plugin */
     public static final String NAME = "OpenQA";
-    public String cacheDir;
-    public static final String PREF_PREFIX = NAME.toLowerCase().concat(".");
+    /** The preference prefix */
+    public static final String PREF_PREFIX = NAME.toLowerCase(Locale.US).concat(".");
+    /** The filetype config key */
     public static final String PREF_FILETYPE = PREF_PREFIX.concat("filetype");
-    private static String VERSION = "unknown";
+    /** The version of the plugin */
+    private static String version = "unknown";
+    /**
+     * The cache directory to use
+     */
+    public String cacheDir;
 
     public static final String OPENQA_IMAGE = "openqa.svg";
 
@@ -49,15 +58,15 @@ public class OpenQA extends Plugin {
 
     public OpenQA(PluginInformation info) {
         super(info);
-        VERSION = info.localversion;
+        setVersion(info.localversion);
         try {
             cacheDir = getPluginDirs().getCacheDirectory(true).getCanonicalPath();
         } catch (IOException e) {
             cacheDir = "openqa";
-            Logging.debug(e.getMessage());
+            Logging.error(e);
         }
         MainApplication.getLayerManager().addLayerChangeListener(new OpenQALayerChangeListener(cacheDir));
-        if (Config.getPref().get(PREF_FILETYPE).equals("")) {
+        if ("".equals(Config.getPref().get(PREF_FILETYPE))) {
             Config.getPref().put(PREF_FILETYPE, "geojson");
         }
         OpenQAAction openqaAction = new OpenQAAction();
@@ -69,7 +78,21 @@ public class OpenQA extends Plugin {
         return new OpenQAPreferences(cacheDir);
     }
 
+    /**
+     * Get the plugin version
+     *
+     * @return The plugin version
+     */
     public static String getVersion() {
-        return VERSION;
+        return version;
+    }
+
+    /**
+     * Set the plugin version
+     *
+     * @param version The plugin version
+     */
+    private static void setVersion(String version) {
+        OpenQA.version = version;
     }
 }

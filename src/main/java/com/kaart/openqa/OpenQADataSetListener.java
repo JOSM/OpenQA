@@ -17,8 +17,9 @@ import org.openstreetmap.josm.data.osm.event.WayNodesChangedEvent;
 import org.openstreetmap.josm.gui.MainApplication;
 
 /**
- * @author Taylor Smock
+ * A listener for OpenQA datasets
  *
+ * @author Taylor Smock
  */
 public class OpenQADataSetListener implements DataSetListener {
 
@@ -26,6 +27,11 @@ public class OpenQADataSetListener implements DataSetListener {
 
     private final String cacheDir;
 
+    /**
+     * Create a new listener
+     *
+     * @param cacheDir The directory to use for caching
+     */
     public OpenQADataSetListener(String cacheDir) {
         this.cacheDir = cacheDir;
     }
