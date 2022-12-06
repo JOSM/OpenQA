@@ -27,6 +27,9 @@ public class OpenQADataSet<I, N extends OpenQANode<I>> {
     }
 
     public synchronized void mergeFrom(OpenQADataSet<I, N> mergeFrom) {
+        if (mergeFrom == null) {
+            return;
+        }
         for (final N node : mergeFrom.allPrimitives()) {
             if (!this.containsNode(node)) {
                 this.addPrimitive(node);
