@@ -4,9 +4,9 @@ package com.kaart.openqa.profiles;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -24,10 +24,10 @@ import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.spi.preferences.Config;
+import org.openstreetmap.josm.tools.HttpClient;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 
-import com.kaart.openqa.CachedFile;
 import com.kaart.openqa.ErrorLayer;
 import com.kaart.openqa.OpenQA;
 import com.kaart.openqa.OpenQADataSet;
@@ -94,22 +94,6 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
      * @return the errors
      */
     public abstract NavigableMap<String, String> getErrors();
-
-    /**
-     * Cache a file for 24 hours
-     *
-     * @param url       The URL to cache
-     * @param type      The accepted times for {@code CachedFile.setHttpAccept}
-     * @param directory The directory to store the file in
-     * @return The {@link CachedFile} object with which to get a file
-     */
-    public static CachedFile getFile(String url, String type, String directory) {
-        CachedFile cache = new CachedFile(url);
-        cache.setMaxAge(86400);
-        cache.setHttpAccept(type);
-        cache.setDestDir(directory);
-        return cache;
-    }
 
     /**
      * Get an icon for a string/size combination
@@ -288,22 +272,23 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
 
     protected static class SendInformation implements Runnable {
         final String url;
-        final String directory;
 
         public SendInformation(String url, String cacheDir) {
             this.url = url;
-            directory = cacheDir;
         }
 
         @Override
         public void run() {
-            try (CachedFile cache = new CachedFile(url)) {
-                File dir = new File(directory, DATA_SUB_DIR);
-                cache.setDestDir(dir.getPath());
-                cache.getFile();
-                cache.clear();
+            HttpClient client = null;
+            try {
+                client = HttpClient.create(URI.create(this.url).toURL());
+                client.connect();
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
+            } finally {
+                if (client != null) {
+                    client.disconnect();
+                }
             }
         }
     }

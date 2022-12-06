@@ -3,13 +3,15 @@ package com.kaart.openqa.profiles.keepright;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 
 import java.awt.event.ActionEvent;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -23,13 +25,12 @@ import org.openstreetmap.josm.data.cache.JCSCacheManager;
 import org.openstreetmap.josm.gui.progress.ProgressMonitor;
 import org.openstreetmap.josm.io.XmlWriter;
 import org.openstreetmap.josm.spi.preferences.Config;
-import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
 import org.openstreetmap.josm.tools.Logging;
 
-import com.kaart.openqa.CachedFile;
 import com.kaart.openqa.GeoJsonReader;
 import com.kaart.openqa.OpenQA;
+import com.kaart.openqa.OpenQACache;
 import com.kaart.openqa.profiles.GenericInformation;
 
 /**
@@ -159,34 +160,17 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
         return "KeepRight";
     }
 
-    private CachedFile getFile(String type, Bounds bound) {
-        String enabled = buildDownloadErrorList();
-        String url = BASE_API + "format=" + type + "&ch=" + enabled;
-        url += "&left=" + bound.getMinLon();
-        url += "&bottom=" + bound.getMinLat();
-        url += "&right=" + bound.getMaxLon();
-        url += "&top=" + bound.getMaxLat();
-        CachedFile cache;
-        try {
-            cache = GenericInformation.getFile(url, formats.get(type),
-                    new File(cacheDir, DATA_SUB_DIR).getCanonicalPath());
-        } catch (IOException e) {
-            Logging.error(e);
-            cache = GenericInformation.getFile(url, formats.get(type), cacheDir);
-        }
-        cache.setDeleteOnExit(true);
-        return cache;
+    private InputStream getBounds(String type, Bounds bound) {
+        final String enabled = buildDownloadErrorList();
+        final String url = BASE_API + "format=" + type + "&ch=" + enabled + "&left=" + bound.getMinLon() + "&bottom="
+                + bound.getMinLat() + "&right=" + bound.getMaxLon() + "&top=" + bound.getMaxLat();
+        return OpenQACache.getUrl(url);
     }
 
     private KeepRightDataSet getGeoJsonErrors(Bounds bound) {
-        CachedFile cache = getFile("geojson", bound);
-        try {
-            return GeoJsonReader.parseDataSet(cache.getInputStream(), this::createNewDataSet,
-                    (tags, coor) -> new KeepRightNode(Long.parseLong(tags.get(ERROR_ID)), coor));
-        } catch (IOException e) {
-            Logging.error(e);
-        }
-        return null;
+        InputStream cache = getBounds("geojson", bound);
+        return GeoJsonReader.parseDataSet(cache, this::createNewDataSet,
+                (tags, coor) -> new KeepRightNode(Long.parseLong(tags.get(ERROR_ID)), coor));
     }
 
     @Override
@@ -233,13 +217,8 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
                 realErrorValue = errorValue;
                 Logging.debug(e.getMessage());
             }
-            CachedFile image = GenericInformation.getFile(String.format(BASE_IMG, realErrorValue), "image/*",
-                    new File(cacheDir, IMG_SUB_DIR).getCanonicalPath());
-            image.setMaxAge(30 * (long) 86400);
-            image.getFile();
-            ImageIcon icon = ImageProvider.get(image.getFile().getAbsolutePath(), size);
-            image.close();
-            return icon;
+            return new ImageIcon(
+                    ImageIO.read(OpenQACache.getUrl(String.format(BASE_IMG, realErrorValue), Duration.ofDays(30))));
         } catch (IOException e) {
             Logging.error(e);
             return super.getIcon("-1", size);

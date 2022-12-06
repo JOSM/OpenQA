@@ -3,6 +3,7 @@ package com.kaart.openqa.profiles.osmose;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import javax.imageio.ImageIO;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonNumber;
@@ -20,8 +21,8 @@ import javax.swing.JButton;
 
 import java.awt.event.ActionEvent;
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.MessageFormat;
@@ -62,7 +63,7 @@ import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.Utils;
 import org.openstreetmap.josm.tools.date.DateUtils;
 
-import com.kaart.openqa.CachedFile;
+import com.kaart.openqa.OpenQACache;
 import com.kaart.openqa.OpenQADataSet;
 import com.kaart.openqa.profiles.GenericInformation;
 
@@ -105,7 +106,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
 
     private OsmoseDataSet getGeoJsonErrors(Bounds bound) {
         OsmoseDataSet ds = createNewDataSet();
-        try (CachedFile cache = getFile(bound); JsonParser json = Json.createParser(cache.getInputStream())) {
+        try (JsonParser json = Json.createParser(getFile(bound))) {
             while (json.hasNext()) {
                 if (json.next() == Event.START_OBJECT) {
                     JsonObject jobject = json.getObject();
@@ -135,13 +136,11 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                     }
                 }
             }
-        } catch (IOException e) {
-            Logging.error(e);
         }
         return ds;
     }
 
-    private CachedFile getFile(Bounds bound) {
+    private InputStream getFile(Bounds bound) {
         String type = "json";
         String enabled = buildDownloadErrorList();
         String url = getBaseApi().concat("issues?full=true").concat("&item=").concat(enabled);
@@ -150,16 +149,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
         url = url.concat(",").concat(Double.toString(bound.getMaxLon()));
         url = url.concat(",").concat(Double.toString(bound.getMaxLat()));
         Logging.info("Downloading {0}", url);
-        CachedFile cache;
-        try {
-            cache = GenericInformation.getFile(url, formats.get(type),
-                    new File(cacheDir, DATA_SUB_DIR).getCanonicalPath());
-        } catch (IOException e) {
-            Logging.error(e);
-            cache = GenericInformation.getFile(url, formats.get(type), cacheDir);
-        }
-        cache.setDeleteOnExit(true);
-        return cache;
+        return OpenQACache.getUrl(url);
     }
 
     @Override
@@ -211,9 +201,8 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
         if (ERROR_MAP.isEmpty()) {
             TreeMap<String, String> tErrors = new TreeMap<>();
 
-            try (CachedFile cache = new CachedFile(MessageFormat.format(BASE_API + "items", getLocale()))) {
-                cache.setDestDir(cacheDir);
-                JsonParser parser = Json.createParser(cache.getInputStream());
+            try (InputStream is = OpenQACache.getUrl(MessageFormat.format(BASE_API + "items", getLocale()));
+                    JsonParser parser = Json.createParser(is)) {
                 while (parser.hasNext()) {
                     if (parser.next() == Event.START_OBJECT) {
                         JsonObject value = parser.getValue().asJsonObject();
@@ -235,7 +224,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                         }
                     }
                 }
-                parser.close();
             } catch (IOException e) {
                 Logging.debug(e);
                 tErrors.put("xxxx", "All");
@@ -257,10 +245,8 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
             String cacheDir) {
         NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> categories = new TreeMap<>();
         NavigableMap<String, String> errors = getErrors(cacheDir);
-        JsonParser parser = null;
-        try (CachedFile cache = new CachedFile(MessageFormat.format(BASE_API + "items", getLocale()))) {
-            cache.setDestDir(cacheDir);
-            parser = Json.createParser(cache.getInputStream());
+        try (InputStream is = OpenQACache.getUrl(MessageFormat.format(BASE_API + "items", getLocale()));
+                JsonParser parser = Json.createParser(is)) {
             while (parser.hasNext()) {
                 if (parser.next() == Event.START_OBJECT) {
                     JsonArray array = parser.getObject().getJsonArray("categories");
@@ -293,9 +279,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
             NavigableMap<String, NavigableMap<String, String>> tMap = new TreeMap<>();
             tMap.put(tr("No categories found"), errors);
             categories.put("-1", tMap);
-        } finally {
-            if (parser != null)
-                parser.close();
         }
         return categories;
     }
@@ -314,10 +297,8 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
 
         @Override
         public void run() {
-            JsonParser parser = null;
-            try (CachedFile cache = new CachedFile(getBaseApiReal() + "issue/" + node.get(ERROR_ID))) {
-                cache.setDeleteOnExit(true);
-                parser = Json.createParser(cache.getContentReader());
+            try (InputStream is = OpenQACache.getUrl(getBaseApiReal() + "issue/" + node.get(ERROR_ID));
+                    JsonParser parser = Json.createParser(is)) {
                 while (parser.hasNext()) {
                     if (parser.next() == Event.START_OBJECT) {
                         JsonObject info = parser.getObject();
@@ -337,9 +318,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                 node.put(ADDITIONAL_INFORMATION, "true");
             } catch (IOException e) {
                 Logging.debug(e);
-            } finally {
-                if (parser != null)
-                    parser.close();
             }
             synchronized (this) {
                 notifyAll();
@@ -572,13 +550,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
             } else if ("falsePositive".equals(errorValue)) {
                 icon = ImageProvider.get("dialogs/notes", "note_comment", size);
             } else {
-                CachedFile image = GenericInformation.getFile(String.format(getBaseImg(), errorValue), "image/*",
-                        new File(cacheDir, IMG_SUB_DIR).getCanonicalPath());
-                image.setMaxAge(30 * (long) 86400);
-                image.getFile();
-                icon = ImageProvider.get(image.getFile().getAbsolutePath());
-                icon = new ImageIcon(ImageProvider.createBoundedImage(icon.getImage(), size.getAdjustedHeight()));
-                image.close();
+                icon = new ImageIcon(ImageIO.read(OpenQACache.getUrl(String.format(getBaseImg(), errorValue))));
             }
             return icon;
         } catch (IOException e) {
