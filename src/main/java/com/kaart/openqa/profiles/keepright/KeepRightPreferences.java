@@ -30,17 +30,14 @@ public class KeepRightPreferences extends ProfilePreferences {
 
     JPanel testPanel;
 
-    final String cacheDir;
     static final String PREF_TESTS = "openqa.keepright-tests";
 
     /**
      * Create a new KeepRightPreferences object
      *
-     * @param directory The directory to cache data in
      */
-    public KeepRightPreferences(String directory) {
+    public KeepRightPreferences() {
         super(OpenQA.OPENQA_IMAGE, tr("Keep Right"), tr("Keep Right Settings"));
-        cacheDir = directory;
     }
 
     @Override
@@ -91,7 +88,7 @@ public class KeepRightPreferences extends ProfilePreferences {
     @Override
     public Component createSubTab() {
         testPanel = new VerticallyScrollablePanel(new GridBagLayout());
-        KeepRightInformation info = new KeepRightInformation(cacheDir);
+        KeepRightInformation info = new KeepRightInformation();
         ArrayList<String> prefs = new ArrayList<>(Config.getPref().getList(PREF_TESTS, info.buildDefaultPref()));
         for (String error : KeepRightInformation.errors.keySet()) {
             if ("0".equals(error))

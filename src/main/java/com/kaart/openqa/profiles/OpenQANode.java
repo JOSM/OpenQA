@@ -32,14 +32,6 @@ public class OpenQANode<I> implements Comparable<OpenQANode<?>>, IQuadBucketType
     private volatile BBox cachedBBox;
     private final TagMap tagMap = new TagMap();
 
-    protected OpenQANode(I identifier, ILatLon latLon) {
-        this(identifier, latLon.lat(), latLon.lon());
-    }
-
-    protected OpenQANode(I identifier, ICoordinate latLon) {
-        this(identifier, latLon.getLat(), latLon.getLon());
-    }
-
     protected OpenQANode(I identifier, double lat, double lon) {
         Objects.requireNonNull(identifier);
         this.identifier = identifier;

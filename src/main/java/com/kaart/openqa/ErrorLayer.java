@@ -32,7 +32,6 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
-import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -76,9 +75,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.ImageProvider.ImageSizes;
-import org.openstreetmap.josm.tools.JosmRuntimeException;
 import org.openstreetmap.josm.tools.Logging;
-import org.openstreetmap.josm.tools.Utils;
 import org.openstreetmap.josm.tools.bugreport.BugReport;
 import org.openstreetmap.josm.tools.bugreport.ReportedException;
 
@@ -165,8 +162,6 @@ public class ErrorLayer extends AbstractModifiableLayer
     private JWindow displayedWindow;
     private PaintWindow window;
 
-    final String cacheDir;
-
     private boolean updateCanceled;
 
     private final List<DataSet> listeningDataSets = new ArrayList<>();
@@ -174,11 +169,9 @@ public class ErrorLayer extends AbstractModifiableLayer
     /**
      * Create a new ErrorLayer using a class that extends {@code GenericInformation}
      *
-     * @param cacheDir The directory where cache files are stored
      */
-    public ErrorLayer(String cacheDir) {
+    public ErrorLayer() {
         super(tr("{0} Layers", OpenQA.NAME));
-        this.cacheDir = cacheDir;
         hookUpMapViewer();
         MainApplication.getLayerManager().addAndFireLayerChangeListener(this);
     }
@@ -194,8 +187,8 @@ public class ErrorLayer extends AbstractModifiableLayer
             if (!GenericInformation.class.isAssignableFrom(type))
                 continue;
             try {
-                Constructor<?> constructor = type.getConstructor(String.class);
-                Object obj = constructor.newInstance(cacheDir);
+                Constructor<?> constructor = type.getConstructor();
+                Object obj = constructor.newInstance();
                 if (!(obj instanceof GenericInformation))
                     continue;
                 if (obj instanceof OsmoseInformation) {
@@ -720,13 +713,9 @@ public class ErrorLayer extends AbstractModifiableLayer
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            File directory = new File(cacheDir, GenericInformation.DATA_SUB_DIR);
-            Utils.deleteDirectory(directory);
-            if (!directory.mkdirs()) {
-                throw new JosmRuntimeException(tr("Could not create directory {0}", directory));
-            }
+            OpenQACache.clear();
             dataSets.forEach(this::forceClear);
-            OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+            OpenQALayerChangeListener.updateOpenQALayers();
         }
 
         private <I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> void forceClear(
@@ -895,6 +884,6 @@ public class ErrorLayer extends AbstractModifiableLayer
 
     @Override
     public void dataSourceChange(DataSourceChangeEvent event) {
-        OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+        OpenQALayerChangeListener.updateOpenQALayers();
     }
 }

@@ -32,18 +32,14 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
 
     JPanel testPanel;
 
-    final String cacheDir;
-
     final ArrayList<ProfilePreferences> tests = new ArrayList<>();
 
     /**
      * Create a new preferences
      *
-     * @param directory The cache directory
      */
-    public OpenQAPreferences(String directory) {
+    public OpenQAPreferences() {
         super(OpenQA.OPENQA_IMAGE, tr("OpenQA"), tr("OpenQA Settings"));
-        cacheDir = directory;
     }
 
     @Override
@@ -51,8 +47,8 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
         testPanel = new JPanel();
         testPanel.setLayout(new GridBagLayout());
         JTabbedPane tp = new JTabbedPane();
-        tests.add(new KeepRightPreferences(cacheDir));
-        tests.add(new OsmosePreferences(cacheDir));
+        tests.add(new KeepRightPreferences());
+        tests.add(new OsmosePreferences());
         for (ProfilePreferences preference : tests) {
             Component subTab = preference.createSubTab();
             JButton selectAll = new JButton(tr("Select all"));
@@ -90,7 +86,7 @@ public class OpenQAPreferences extends DefaultTabPreferenceSetting implements Su
             if (!ok)
                 ok = nok;
         }
-        OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+        OpenQALayerChangeListener.updateOpenQALayers();
         return ok;
     }
 

@@ -25,17 +25,6 @@ public class OpenQADataSetListener implements DataSetListener {
 
     private List<Bounds> bounds;
 
-    private final String cacheDir;
-
-    /**
-     * Create a new listener
-     *
-     * @param cacheDir The directory to use for caching
-     */
-    public OpenQADataSetListener(String cacheDir) {
-        this.cacheDir = cacheDir;
-    }
-
     /*
      * (non-Javadoc)
      *
@@ -48,7 +37,7 @@ public class OpenQADataSetListener implements DataSetListener {
         List<ErrorLayer> layers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
         if (!layers.isEmpty() && (bounds == null || !new HashSet<>(bounds).containsAll(tBounds))) {
             bounds = tBounds;
-            OpenQALayerChangeListener.updateOpenQALayers(cacheDir);
+            OpenQALayerChangeListener.updateOpenQALayers();
         }
     }
 

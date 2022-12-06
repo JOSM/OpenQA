@@ -43,20 +43,12 @@ import com.kaart.openqa.OpenQADataSet;
 public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends OpenQADataSet<I, N>> {
     /** The subdirectory to store the data. This can be deleted at any time. */
     public static final String DATA_SUB_DIR = "data";
-    /** The subdirectory to store the images. This is usually not deleted. */
-    public static final String IMG_SUB_DIR = "img";
 
     /** The key to store unique the error id */
     public static final String ERROR_ID = "error_id";
 
     /** the difference between groups (integer numbers) */
     public static final int GROUP_DIFFERENCE = 10;
-
-    protected final String cacheDir;
-
-    protected GenericInformation(String cacheDir) {
-        this.cacheDir = cacheDir;
-    }
 
     /**
      * The layer name
@@ -221,13 +213,6 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
     }
 
     /**
-     * Get the cache directory
-     *
-     * @return the directory in which we cache files
-     */
-    public abstract String getCacheDir();
-
-    /**
      * Get the Layer name
      *
      * @return The Layer name
@@ -273,7 +258,7 @@ public abstract class GenericInformation<I, N extends OpenQANode<I>, D extends O
     protected static class SendInformation implements Runnable {
         final String url;
 
-        public SendInformation(String url, String cacheDir) {
+        public SendInformation(String url) {
             this.url = url;
         }
 

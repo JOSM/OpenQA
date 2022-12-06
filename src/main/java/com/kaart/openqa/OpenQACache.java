@@ -66,4 +66,11 @@ public final class OpenQACache {
         cacheElement.setElementAttributes(attribs);
         return new ByteArrayInputStream(bytes);
     }
+
+    /**
+     * Clear the cache
+     */
+    public static void clear() {
+        CACHE.clear();
+    }
 }

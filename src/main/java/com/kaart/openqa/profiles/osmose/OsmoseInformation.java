@@ -93,12 +93,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
 
     private static final NavigableMap<String, String> ERROR_MAP = new TreeMap<>();
 
-    protected static final NavigableMap<String, String> formats = new TreeMap<>();
-
-    public OsmoseInformation(String cacheDir) {
-        super(cacheDir);
-    }
-
     @Override
     public String getName() {
         return NAME;
@@ -141,7 +135,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
     }
 
     private InputStream getFile(Bounds bound) {
-        String type = "json";
         String enabled = buildDownloadErrorList();
         String url = getBaseApi().concat("issues?full=true").concat("&item=").concat(enabled);
         url = url.concat("&bbox=").concat(Double.toString(bound.getMinLon()));
@@ -188,16 +181,20 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
 
     @Override
     public List<String> buildDefaultPref() {
-        return new ArrayList<>(getErrors(cacheDir).keySet());
+        return new ArrayList<>(getErrors().keySet());
     }
 
     /**
      * Get all the possible errors
      *
-     * @param cacheDir Directory to store error defaultDownloadTypes file
      * @return NavigableMap&lt;String errorNumber, String errorName&gt;
      */
-    public static NavigableMap<String, String> getErrors(String cacheDir) {
+    @Override
+    public NavigableMap<String, String> getErrors() {
+        return realGetErrors();
+    }
+
+    private static NavigableMap<String, String> realGetErrors() {
         if (ERROR_MAP.isEmpty()) {
             TreeMap<String, String> tErrors = new TreeMap<>();
 
@@ -237,14 +234,12 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
     /**
      * Get the errors and their categories
      *
-     * @param cacheDir directory to cache information in
      * @return NavigableMap&lt;String category_number, TreeMap&lt;String category,
      *         TreeMap&lt;String errorNumber, String errorName&gt;&gt;&gt;
      */
-    public static NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> getCategories(
-            String cacheDir) {
+    public static NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> getCategories() {
         NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> categories = new TreeMap<>();
-        NavigableMap<String, String> errors = getErrors(cacheDir);
+        NavigableMap<String, String> errors = realGetErrors();
         try (InputStream is = OpenQACache.getUrl(MessageFormat.format(BASE_API + "items", getLocale()));
                 JsonParser parser = Json.createParser(is)) {
             while (parser.hasNext()) {
@@ -487,7 +482,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                new SendInformation(apiUrl.concat("done"), cacheDir).run();
+                new SendInformation(apiUrl.concat("done")).run();
                 node.put(actionTaken, sTrue);
                 fixed.setEnabled(false);
                 falsePositive.setEnabled(true);
@@ -502,7 +497,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                new SendInformation(apiUrl.concat(sFalse), cacheDir).run();
+                new SendInformation(apiUrl.concat(sFalse)).run();
                 node.put(actionTaken, sFalse);
                 fixed.setEnabled(true);
                 falsePositive.setEnabled(false);
@@ -570,11 +565,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
     }
 
     @Override
-    public String getCacheDir() {
-        return this.cacheDir;
-    }
-
-    @Override
     public String getBaseApi() {
         return getBaseApiReal();
     }
@@ -591,11 +581,6 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
     @Override
     public String getBaseErrorUrl() {
         return MessageFormat.format(BASE_ERROR_URL, getLocale());
-    }
-
-    @Override
-    public NavigableMap<String, String> getErrors() {
-        return getErrors(getCacheDir());
     }
 
     /**

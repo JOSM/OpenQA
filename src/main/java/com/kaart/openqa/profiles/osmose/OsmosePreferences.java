@@ -36,17 +36,14 @@ import com.kaart.openqa.profiles.ProfilePreferences;
 public class OsmosePreferences extends ProfilePreferences {
     JPanel testPanel;
 
-    final String cacheDir;
     static final String PREF_TESTS = "openqa.osmose-tests";
 
     /**
      * Create a new Osmose preference object
      *
-     * @param directory The cache directory
      */
-    public OsmosePreferences(String directory) {
+    public OsmosePreferences() {
         super(OpenQA.OPENQA_IMAGE, tr("Osmose"), tr("osmose Settings"));
-        cacheDir = directory;
     }
 
     @Override
@@ -58,7 +55,7 @@ public class OsmosePreferences extends ProfilePreferences {
     public boolean ok() {
         ArrayList<String> prefs = new ArrayList<>();
         NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> categories = OsmoseInformation
-                .getCategories(cacheDir);
+                .getCategories();
         NavigableMap<String, String> errors = new TreeMap<>();
         for (NavigableMap<String, NavigableMap<String, String>> value : categories.values()) {
             value.values().forEach(errors::putAll);
@@ -100,10 +97,10 @@ public class OsmosePreferences extends ProfilePreferences {
     @Override
     public Component createSubTab() {
         testPanel = new VerticallyScrollablePanel(new GridBagLayout());
-        OsmoseInformation info = new OsmoseInformation(cacheDir);
+        OsmoseInformation info = new OsmoseInformation();
         ArrayList<String> prefs = new ArrayList<>(Config.getPref().getList(PREF_TESTS, info.buildDefaultPref()));
         NavigableMap<String, NavigableMap<String, NavigableMap<String, String>>> errors = OsmoseInformation
-                .getCategories(cacheDir);
+                .getCategories();
         for (Map.Entry<String, NavigableMap<String, NavigableMap<String, String>>> entry : errors.entrySet()) {
             String categoryNumber = entry.getKey();
             for (String category : entry.getValue().keySet()) {

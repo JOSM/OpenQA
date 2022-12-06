@@ -28,17 +28,6 @@ import com.kaart.openqa.profiles.osmose.OsmoseInformation;
  */
 public class OpenQALayerChangeListener implements LayerChangeListener {
     final HashMap<OsmDataLayer, OpenQADataSetListener> listeners = new HashMap<>();
-    private final String cacheDir;
-
-    /**
-     * Create a new listener
-     *
-     * @param cacheDir The directory to use for caching
-     */
-    public OpenQALayerChangeListener(String cacheDir) {
-        super();
-        this.cacheDir = cacheDir;
-    }
 
     /**
      * Listen for added layers
@@ -60,12 +49,12 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
                 time++;
             }
 
-            OpenQADataSetListener listener = new OpenQADataSetListener(cacheDir);
+            OpenQADataSetListener listener = new OpenQADataSetListener();
             layer.data.addDataSetListener(listener);
             listeners.put(layer, listener);
             List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
             if (!errorLayers.isEmpty()) {
-                updateOpenQALayers(cacheDir);
+                updateOpenQALayers();
             }
         }
     }
@@ -85,23 +74,20 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
     /**
      * Update all the OpenQA layers
      *
-     * @param cacheDir The directory to cache files in
      */
-    public static void updateOpenQALayers(String cacheDir) {
+    public static void updateOpenQALayers() {
         List<OsmDataLayer> osmDataLayers = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class);
         if (osmDataLayers.isEmpty())
             return;
-        MainApplication.worker.submit(new UpdateLayersTask(cacheDir, new PleaseWaitProgressMonitor()));
+        MainApplication.worker.submit(new UpdateLayersTask(new PleaseWaitProgressMonitor()));
     }
 
     private static class UpdateLayersTask extends PleaseWaitRunnable {
         private boolean isCanceled;
-        String cacheDir;
         ErrorLayer layer;
 
-        public UpdateLayersTask(String cacheDir, PleaseWaitProgressMonitor monitor) {
+        public UpdateLayersTask(PleaseWaitProgressMonitor monitor) {
             this(tr("Update {0} Layers", OpenQA.NAME), monitor, false);
-            this.cacheDir = cacheDir;
         }
 
         public UpdateLayersTask(String title, ProgressMonitor progressMonitor, boolean ignoreException) {
@@ -121,7 +107,7 @@ public class OpenQALayerChangeListener implements LayerChangeListener {
             List<ErrorLayer> errorLayers = MainApplication.getLayerManager().getLayersOfType(ErrorLayer.class);
             layer = null;
             if (errorLayers.isEmpty()) {
-                layer = new ErrorLayer(cacheDir);
+                layer = new ErrorLayer();
                 layer.setErrorClasses(KeepRightInformation.class, OsmoseInformation.class);
                 MainApplication.getLayerManager().addLayer(layer);
             } else {

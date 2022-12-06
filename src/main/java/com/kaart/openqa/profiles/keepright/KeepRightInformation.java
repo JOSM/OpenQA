@@ -151,10 +151,6 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
     /** the difference between groups (integer numbers) */
     public static final int GROUP_DIFFERENCE = 10;
 
-    public KeepRightInformation(String cacheDir) {
-        super(cacheDir);
-    }
-
     @Override
     public String getName() {
         return "KeepRight";
@@ -282,8 +278,8 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                new SendInformation(String.format(COMMENT_URL, FIXED, "", node.get("schema"), node.get(ERROR_ID)),
-                        cacheDir).run();
+                new SendInformation(String.format(COMMENT_URL, FIXED, "", node.get("schema"), node.get(ERROR_ID)))
+                        .run();
                 node.put("actionTaken", "true");
                 fixed.setEnabled(false);
                 falsePositive.setEnabled(true);
@@ -299,8 +295,7 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
             @Override
             public void actionPerformed(ActionEvent e) {
                 new SendInformation(
-                        String.format(COMMENT_URL, FALSE_POSITIVE, "", node.get("schema"), node.get(ERROR_ID)),
-                        cacheDir).run();
+                        String.format(COMMENT_URL, FALSE_POSITIVE, "", node.get("schema"), node.get(ERROR_ID))).run();
                 node.put("actionTaken", "false");
                 fixed.setEnabled(true);
                 falsePositive.setEnabled(false);
@@ -340,11 +335,6 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
     @Override
     public String getError(KeepRightNode node) {
         return node.get("error_type");
-    }
-
-    @Override
-    public String getCacheDir() {
-        return cacheDir;
     }
 
     @Override
