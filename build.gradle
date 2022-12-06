@@ -6,15 +6,15 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 plugins {
-  id "com.diffplug.spotless" version "6.8.0"
-  id "com.github.ben-manes.versions" version "0.42.0"
-  id "com.github.spotbugs" version "5.0.9"
+  id "com.diffplug.spotless" version "6.12.0"
+  id "com.github.ben-manes.versions" version "0.44.0"
+  id "com.github.spotbugs" version "5.0.13"
   // id "de.aaschmid.cpd" version "3.3"
   id "eclipse"
   id "jacoco"
   id "java"
   id "maven-publish"
-  id "net.ltgt.errorprone" version "2.0.2"
+  id "net.ltgt.errorprone" version "3.0.1"
   id "org.openstreetmap.josm" version "0.8.2"
   id "pmd"
 }
@@ -23,17 +23,23 @@ archivesBaseName = "openqa"
 def gitlabGroup = "gokaart"
 def gitlabRepositoryName = "JOSM_OpenQA"
 
+repositories {
+  mavenCentral()
+  maven {
+    url "https://josm.openstreetmap.de/nexus/content/repositories/releases/"
+  }
+}
 
 def versions = [
   awaitility: "4.2.0",
   // Errorprone 2.11 requires Java 11+
-  errorprone: (JavaVersion.toVersion(getJavaVersion()) >= JavaVersion.VERSION_11) ? "2.14.0" : "2.10.0",
+  errorprone: (JavaVersion.toVersion(getJavaVersion()) >= JavaVersion.VERSION_11) ? "2.16.0" : "2.10.0",
   jacoco: "0.8.7",
-  jmockit: "1.49",
-  junit: "5.9.0",
+  jmockit: "1.49.a",
+  junit: "5.9.1",
   pmd: "6.20.0",
-  spotbugs: "4.7.1",
-  wiremock: "2.33.2",
+  spotbugs: "4.7.3",
+  wiremock: "2.35.0",
   findsecbugs: "1.12.0",
 ]
 
@@ -41,9 +47,6 @@ repositories {
   mavenCentral()
 }
 dependencies {
-  if (!JavaVersion.toVersion(getJavaVersion()).isJava9Compatible()) {
-    errorproneJavac("com.google.errorprone:javac:9+181-r4173-1")
-  }
   spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${versions.findsecbugs}"
   errorprone("com.google.errorprone:error_prone_core:${versions.errorprone}")
 
