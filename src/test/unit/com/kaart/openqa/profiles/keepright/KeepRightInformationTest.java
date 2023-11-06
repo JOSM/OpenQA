@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.ArrayList;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.openstreetmap.josm.testutils.JOSMTestRules;
 
 import com.kaart.openqa.annotations.OpenQACacheAnnotation;
 
@@ -16,9 +14,6 @@ import com.kaart.openqa.annotations.OpenQACacheAnnotation;
  */
 @OpenQACacheAnnotation
 class KeepRightInformationTest {
-    @RegisterExtension
-    static JOSMTestRules rule = new JOSMTestRules();
-
     /**
      * Test the default KeepRight preferences
      */
