@@ -49,5 +49,7 @@ jobs:
       perform-revision-tagging: ${{ github.repository == 'JOSM/OpenQA' && github.ref_type == 'branch' && github.ref_name == 'master' && github.event_name != 'schedule' && github.event_name != 'pull_request' && matrix.josm-revision == 'r19044' }}
     secrets: inherit
     permissions:
+      actions: write
+      attestations: write
       contents: write
       deployments: write
