@@ -13,7 +13,6 @@ import org.apache.commons.jcs3.engine.behavior.ICacheElement;
 import org.apache.commons.jcs3.engine.behavior.IElementAttributes;
 import org.openstreetmap.josm.data.cache.JCSCacheManager;
 import org.openstreetmap.josm.tools.HttpClient;
-import org.openstreetmap.josm.tools.Utils;
 
 /**
  * The class for cache
@@ -50,7 +49,7 @@ public final class OpenQACache {
                 client = HttpClient.create(URI.create(url).toURL());
                 HttpClient.Response response = client.connect();
                 try (InputStream is = response.getContent()) {
-                    return Utils.readBytesFromStream(is);
+                    return is.readAllBytes();
                 }
             } catch (IOException e) {
                 throw new UncheckedIOException(e);

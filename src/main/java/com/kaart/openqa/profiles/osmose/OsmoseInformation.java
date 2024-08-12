@@ -401,7 +401,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
                 JsonArray jsonArray = reader.readArray();
                 users = new ArrayList<>(jsonArray.size());
                 for (JsonString user : jsonArray.getValuesAs(JsonString.class)) {
-                    if (!Utils.isBlank(user.getString())) {
+                    if (!user.getString().isBlank()) {
                         users.add(getUserName(user.getString()));
                     }
                 }
