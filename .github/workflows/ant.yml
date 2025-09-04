@@ -42,7 +42,7 @@ jobs:
     strategy:
       matrix:
         josm-revision: ["", "r19044"]
-    uses: JOSM/JOSMPluginAction/.github/workflows/ant.yml@v2
+    uses: JOSM/JOSMPluginAction/.github/workflows/ant.yml@v3
     with:
       josm-revision: ${{ matrix.josm-revision }}
       plugin-jar-name: 'openqa'
@@ -53,3 +53,4 @@ jobs:
       attestations: write
       contents: write
       deployments: write
+      id-token: write
