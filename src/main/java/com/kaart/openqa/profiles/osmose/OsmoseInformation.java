@@ -98,7 +98,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
         return NAME;
     }
 
-    private OsmoseDataSet getGeoJsonErrors(Bounds bound) {
+    private OsmoseDataSet getGeoJsonErrors(Bounds bound) throws IOException {
         OsmoseDataSet ds = createNewDataSet();
         try (JsonParser json = Json.createParser(getFile(bound))) {
             while (json.hasNext()) {
@@ -134,7 +134,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
         return ds;
     }
 
-    private InputStream getFile(Bounds bound) {
+    private InputStream getFile(Bounds bound) throws IOException {
         String enabled = buildDownloadErrorList();
         String url = getBaseApi().concat("issues?full=true").concat("&item=").concat(enabled);
         url = url.concat("&bbox=").concat(Double.toString(bound.getMinLon()));
@@ -161,13 +161,17 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
         for (Bounds bound : bounds) {
             if (subTask.isCanceled())
                 break;
-            OpenQADataSet<UUID, OsmoseNode> ds = getGeoJsonErrors(bound);
-            if (ds != null) {
-                if (returnDataSet == null) {
-                    returnDataSet = ds;
-                } else {
-                    returnDataSet.mergeFrom(ds);
+            try {
+                OpenQADataSet<UUID, OsmoseNode> ds = getGeoJsonErrors(bound);
+                if (ds != null) {
+                    if (returnDataSet == null) {
+                        returnDataSet = ds;
+                    } else {
+                        returnDataSet.mergeFrom(ds);
+                    }
                 }
+            } catch (IOException e) {
+                Logging.error(e);
             }
         }
         return returnDataSet;

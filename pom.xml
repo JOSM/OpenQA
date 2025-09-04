@@ -17,6 +17,8 @@
         </developer>
     </developers>
     <properties>
+        <java.lang.version>11</java.lang.version>
+        <maven.compiler.release>${java.lang.version}</maven.compiler.release>
         <plugin.src.dir>src</plugin.src.dir>
         <plugin.main.version>19044</plugin.main.version>
         <plugin.author>Taylor Smock &lt;incoming+gokaart/JOSM_OpenQA@incoming.gitlab.com&gt;</plugin.author>
@@ -30,6 +32,19 @@
         <!-- most plugins default to resource directories in root, e.g. ./data, ./images, ./resources -->
         <plugin.resources.dir>${project.basedir}/src/main/resources</plugin.resources.dir>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.openstreetmap.josm</groupId>
+            <artifactId>josm</artifactId>
+            <version>1.5-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-jcs3-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <plugin>

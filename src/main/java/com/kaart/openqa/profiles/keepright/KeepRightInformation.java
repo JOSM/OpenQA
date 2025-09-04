@@ -11,6 +11,7 @@ import javax.swing.JButton;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.SocketException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -156,14 +157,14 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
         return "KeepRight";
     }
 
-    private InputStream getBounds(String type, Bounds bound) {
+    private InputStream getBounds(String type, Bounds bound) throws IOException {
         final String enabled = buildDownloadErrorList();
         final String url = BASE_API + "format=" + type + "&ch=" + enabled + "&left=" + bound.getMinLon() + "&bottom="
                 + bound.getMinLat() + "&right=" + bound.getMaxLon() + "&top=" + bound.getMaxLat();
         return OpenQACache.getUrl(url);
     }
 
-    private KeepRightDataSet getGeoJsonErrors(Bounds bound) {
+    private KeepRightDataSet getGeoJsonErrors(Bounds bound) throws IOException {
         InputStream cache = getBounds("geojson", bound);
         return GeoJsonReader.parseDataSet(cache, this::createNewDataSet,
                 (tags, coor) -> new KeepRightNode(Long.parseLong(tags.get(ERROR_ID)), coor));
@@ -185,11 +186,15 @@ public class KeepRightInformation extends GenericInformation<Long, KeepRightNode
         for (Bounds bound : bounds) {
             if (monitor.isCanceled())
                 break;
-            KeepRightDataSet ds = getGeoJsonErrors(bound);
-            if (returnDataSet == null) {
-                returnDataSet = ds;
-            } else if (ds != null) {
-                returnDataSet.mergeFrom(ds);
+            try {
+                KeepRightDataSet ds = getGeoJsonErrors(bound);
+                if (returnDataSet == null) {
+                    returnDataSet = ds;
+                } else if (ds != null) {
+                    returnDataSet.mergeFrom(ds);
+                }
+            } catch (IOException e) {
+                Logging.error(e);
             }
         }
         monitor.finishTask();

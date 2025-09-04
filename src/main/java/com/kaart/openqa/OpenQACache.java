@@ -5,14 +5,18 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.net.SocketException;
 import java.net.URI;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.jcs3.access.CacheAccess;
 import org.apache.commons.jcs3.engine.behavior.ICacheElement;
 import org.apache.commons.jcs3.engine.behavior.IElementAttributes;
 import org.openstreetmap.josm.data.cache.JCSCacheManager;
+import org.openstreetmap.josm.io.NetworkManager;
 import org.openstreetmap.josm.tools.HttpClient;
+import org.openstreetmap.josm.tools.Logging;
 
 /**
  * The class for cache
@@ -31,7 +35,7 @@ public final class OpenQACache {
      * @param url The URL to get data from
      * @return The InputStream to read
      */
-    public static InputStream getUrl(String url) {
+    public static InputStream getUrl(String url) throws IOException {
         return getUrl(url, Duration.ofDays(1));
     }
 
@@ -42,7 +46,8 @@ public final class OpenQACache {
      * @param timeToKeep The time to keep the data
      * @return The InputStream to read
      */
-    public static InputStream getUrl(String url, Duration timeToKeep) {
+    public static InputStream getUrl(String url, Duration timeToKeep) throws IOException {
+        final AtomicReference<IOException> throwable = new AtomicReference<>();
         final byte[] bytes = CACHE.get(url, () -> {
             HttpClient client = null;
             try {
@@ -52,13 +57,22 @@ public final class OpenQACache {
                     return is.readAllBytes();
                 }
             } catch (IOException e) {
-                throw new UncheckedIOException(e);
+                throwable.set(e);
+                return null;
             } finally {
                 if (client != null) {
                     client.disconnect();
                 }
             }
         });
+        if (bytes == null) {
+            CACHE.remove(url);
+            if (throwable.get() != null) {
+                throw throwable.get();
+            } else {
+                throw new IOException("Data was not read from " + url);
+            }
+        }
         ICacheElement<String, byte[]> cacheElement = CACHE.getCacheElement(url);
         IElementAttributes attribs = cacheElement.getElementAttributes();
         attribs.setIdleTime(timeToKeep.toMillis());
