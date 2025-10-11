@@ -20,6 +20,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 
 import java.awt.event.ActionEvent;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -549,7 +550,13 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
             } else if ("falsePositive".equals(errorValue)) {
                 icon = ImageProvider.get("dialogs/notes", "note_comment", size);
             } else {
-                icon = new ImageIcon(ImageIO.read(OpenQACache.getUrl(String.format(getBaseImg(), errorValue))));
+                final BufferedImage bi = ImageIO.read(OpenQACache.getUrl(String.format(getBaseImg(), errorValue)));
+                if (bi == null) {
+                    Logging.error("Could not get message for {0}", getBaseImg());
+                    icon = ImageProvider.createBlankIcon(ImageSizes.SMALLICON);
+                } else {
+                    icon = new ImageIcon(bi);
+                }
             }
             return icon;
         } catch (IOException e) {
