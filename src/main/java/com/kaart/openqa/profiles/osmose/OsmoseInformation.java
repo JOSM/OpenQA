@@ -79,7 +79,7 @@ public class OsmoseInformation extends GenericInformation<UUID, OsmoseNode, Open
 
     public static final String LAYER_NAME = "Osmose Errors";
     public static final String BASE_API = "https://osmose.openstreetmap.fr/{0}/api/0.3/";
-    public static final String BASE_IMG = "https://osmose.openstreetmap.fr/images/markers/marker-b-%s.png";
+    public static final String BASE_IMG = BASE_API + "assets/markers/marker-b-%s.png";
     public static final String BASE_ERROR_URL = "https://osmose.openstreetmap.fr/{0}/error/";
 
     private static final String ADDITIONAL_INFORMATION = "ADDITIONAL_INFORMATION";
